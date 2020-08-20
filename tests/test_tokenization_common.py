@@ -423,7 +423,7 @@ class TokenizerTesterMixin:
                     seq_1 = "With these inputs."
                     information = tokenizer.encode_plus(seq_0, seq_1, add_special_tokens=True)
                     sequences, mask = information["input_ids"], information["token_type_ids"]
-                    self.assertEqual(len(sequences), len(mask))
+                    self.assertEqual(len(sequences), len(mask), f"sequence={sequences}, mask={mask}")
 
     def test_number_of_added_tokens(self):
         tokenizers = self.get_tokenizers(do_lower_case=False)

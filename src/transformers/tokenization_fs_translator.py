@@ -37,19 +37,19 @@ VOCAB_FILES_NAMES = {
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
-        "fairseq-transformer-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
+        "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
     },
     "merges_file": {
-        "fairseq-transformer-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt",
+        "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt",
     },
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "fairseq-transformer-wmt19-ru-en": 1024,
+    "fairseq-translator-wmt19-ru-en": 1024,
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "fairseq-transformer-wmt19-ru-en": { },
+    "fairseq-translator-wmt19-ru-en": { },
 }
 
 
@@ -153,9 +153,14 @@ def romanian_preprocessing(text):
     return text
 
 
-class FairseqBPETokenizer(PreTrainedTokenizer):
+class FairseqTranslatorTokenizer(PreTrainedTokenizer):
     """
     BPE tokenizer
+
+    notes:
+    changed in defaults from xlm copy of this code
+    - do_lowercase_and_remove_accent=False,
+
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -187,7 +192,7 @@ class FairseqBPETokenizer(PreTrainedTokenizer):
         ],
         lang2id=None,
         id2lang=None,
-        do_lowercase_and_remove_accent=True,
+        do_lowercase_and_remove_accent=False,
         **kwargs
     ):
         super().__init__(
@@ -445,9 +450,13 @@ class FairseqBPETokenizer(PreTrainedTokenizer):
         bos = [self.bos_token_id]
         sep = [self.sep_token_id]
 
+        # no bos used in fairseq
         if token_ids_1 is None:
-            return bos + token_ids_0 + sep
-        return bos + token_ids_0 + sep + token_ids_1 + sep
+            return token_ids_0 + sep
+        return token_ids_0 + sep + token_ids_1 + sep
+        # if token_ids_1 is None:
+        #     return bos + token_ids_0 + sep
+        # return bos + token_ids_0 + sep + token_ids_1 + sep
 
     def get_special_tokens_mask(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None, already_has_special_tokens: bool = False
@@ -475,10 +484,13 @@ class FairseqBPETokenizer(PreTrainedTokenizer):
                     "ids is already formated with special tokens for the model."
                 )
             return list(map(lambda x: 1 if x in [self.sep_token_id, self.cls_token_id] else 0, token_ids_0,))
-
+        # no bos used in fairseq
         if token_ids_1 is not None:
-            return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
-        return [1] + ([0] * len(token_ids_0)) + [1]
+            return ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
+        return ([0] * len(token_ids_0)) + [1]
+        # if token_ids_1 is not None:
+        #     return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
+        # return [1] + ([0] * len(token_ids_0)) + [1]
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
@@ -506,9 +518,13 @@ class FairseqBPETokenizer(PreTrainedTokenizer):
         """
         sep = [self.sep_token_id]
         cls = [self.cls_token_id]
+        # no bos used in fairseq
         if token_ids_1 is None:
-            return len(cls + token_ids_0 + sep) * [0]
-        return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
+            return len(token_ids_0 + sep) * [0]
+        return len(token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
+        # if token_ids_1 is None:
+        #     return len(cls + token_ids_0 + sep) * [0]
+        # return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
 
     def save_vocabulary(self, save_directory):
         """

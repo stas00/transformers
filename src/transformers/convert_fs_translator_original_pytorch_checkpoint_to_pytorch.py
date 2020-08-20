@@ -29,7 +29,7 @@ import torch
 from pathlib import Path
 
 from transformers import CONFIG_NAME, WEIGHTS_NAME
-from transformers.tokenization_fs_translator import FairseqBPETokenizer, VOCAB_FILES_NAMES
+from transformers.tokenization_fs_translator import FairseqTranslatorTokenizer, VOCAB_FILES_NAMES
 
 from fairseq.data.dictionary import Dictionary
 
@@ -43,7 +43,12 @@ VOCAB_FILES_NAMES = {
 def rewrite_dict_keys(d):
     # (1) remove word breaking symbol, (2) add word ending symbol where the word is not broken up
     # d = {'le@@': 5, 'tt@@': 6, 'er': 7} => {'le': 5, 'tt': 6, 'er</w>': 7}
-    return dict((re.sub(r'@@$', '', k), v) if k.endswith('@@') else (re.sub(r'$', '</w>', k), v) for k, v in d.items())
+    d2=dict((re.sub(r'@@$', '', k), v) if k.endswith('@@') else (re.sub(r'$', '</w>', k), v) for k, v in d.items())
+    keep_keys = "<s> <pad> </s> <unk>".split()
+    for k in keep_keys:
+        del d2[f"{k}</w>"]
+        d2[k] = d[k] # restore
+    return d2
     #return dict((re.sub(r'@@', '</w>', k, 0, re.M), v) if k.endswith('@@') else (k, v) for k, v in d.items())
 
 def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkpoint_path, pytorch_dump_folder_path):
@@ -68,13 +73,14 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
     src_vocab = rewrite_dict_keys(src_dict.indices)
     pytorch_vocab_file_src = os.path.join(pytorch_dump_folder_path, f"vocab-{src_lang}.json")
     with open(pytorch_vocab_file_src, "w", encoding="utf-8") as f:
-        f.write(json.dumps(src_vocab, ensure_ascii=False, indent=2) + "\n")
+        f.write(json.dumps(src_vocab, ensure_ascii=False, indent=2))
 
+    # XXX: adjust json.dumps to not have new lines with indent=None
     tgt_dict = Dictionary.load(tgt_dict_file)
     tgt_vocab = rewrite_dict_keys(tgt_dict.indices)
     pytorch_vocab_file_tgt = os.path.join(pytorch_dump_folder_path, f"vocab-{tgt_lang}.json")
     with open(pytorch_vocab_file_tgt, "w", encoding="utf-8") as f:
-        f.write(json.dumps(tgt_vocab, ensure_ascii=False, indent=2) + "\n")
+        f.write(json.dumps(tgt_vocab, ensure_ascii=False, indent=2))
 
     # done:
     # convert merge_file (bpecodes)
@@ -94,6 +100,12 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
     # with open(merge_file, "w", encoding="utf-8") as fout:
     #     fout.write("\n".join(merges) + "\n")
 
+
+    # config - XXX: what really should go there, other than "do_lower_case": False,
+    fairseq_config_file = os.path.join(pytorch_dump_folder_path, "config.json")
+    conf = {"do_lower_case": False, "model_max_length": 1024}
+    with open(fairseq_config_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(conf, ensure_ascii=False, indent=None))
 
     # todo:
     # model
