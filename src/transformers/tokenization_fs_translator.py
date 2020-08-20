@@ -65,6 +65,7 @@ def get_pairs(word):
         prev_char = char
     return pairs
 
+# XXX: This tokenizer is a modified XLM tokenizer, so probably can remove more things that are irrelevant here
 
 def lowercase_and_remove_accent(text):
     """
@@ -137,20 +138,6 @@ def remove_non_printing_char(text):
             continue
         output.append(char)
     return "".join(output)
-
-
-def romanian_preprocessing(text):
-    """Sennrich's WMT16 scripts for Romanian preprocessing, used by model `xlm-mlm-enro-1024`"""
-    # https://github.com/rsennrich/wmt16-scripts/blob/master/preprocess/normalise-romanian.py
-    text = text.replace("\u015e", "\u0218").replace("\u015f", "\u0219")
-    text = text.replace("\u0162", "\u021a").replace("\u0163", "\u021b")
-    # https://github.com/rsennrich/wmt16-scripts/blob/master/preprocess/remove-diacritics.py
-    text = text.replace("\u0218", "S").replace("\u0219", "s")  # s-comma
-    text = text.replace("\u021a", "T").replace("\u021b", "t")  # t-comma
-    text = text.replace("\u0102", "A").replace("\u0103", "a")
-    text = text.replace("\u00C2", "A").replace("\u00E2", "a")
-    text = text.replace("\u00CE", "I").replace("\u00EE", "i")
-    return text
 
 
 class FairseqTranslatorTokenizer(PreTrainedTokenizer):
@@ -366,40 +353,7 @@ class FairseqTranslatorTokenizer(PreTrainedTokenizer):
             text = text.split()
         elif lang not in self.lang_with_custom_tokenizer:
             text = self.moses_pipeline(text, lang=lang)
-            # TODO: make sure we are using `fairseq_transformer-mlm-enro-1024`, since FAIRSEQ_TRANSFORMER-100 doesn't have this step
-            if lang == "ro":
-                text = romanian_preprocessing(text)
             text = self.moses_tokenize(text, lang=lang)
-        elif lang == "th":
-            text = self.moses_pipeline(text, lang=lang)
-            try:
-                if "pythainlp" not in sys.modules:
-                    from pythainlp.tokenize import word_tokenize as th_word_tokenize
-                else:
-                    th_word_tokenize = sys.modules["pythainlp"].word_tokenize
-            except (AttributeError, ImportError):
-                logger.error(
-                    "Make sure you install PyThaiNLP (https://github.com/PyThaiNLP/pythainlp) with the following steps"
-                )
-                logger.error("1. pip install pythainlp")
-                raise
-            text = th_word_tokenize(text)
-        elif lang == "zh":
-            try:
-                if "jieba" not in sys.modules:
-                    import jieba
-                else:
-                    jieba = sys.modules["jieba"]
-            except (AttributeError, ImportError):
-                logger.error("Make sure you install Jieba (https://github.com/fxsjy/jieba) with the following steps")
-                logger.error("1. pip install jieba")
-                raise
-            text = " ".join(jieba.cut(text))
-            text = self.moses_pipeline(text, lang=lang)
-            text = text.split()
-        elif lang == "ja":
-            text = self.moses_pipeline(text, lang=lang)
-            text = self.ja_tokenize(text)
         else:
             raise ValueError("It should not reach here")
 
