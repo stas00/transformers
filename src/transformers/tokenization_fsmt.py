@@ -37,19 +37,19 @@ VOCAB_FILES_NAMES = {
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
-        "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
     },
     "merges_file": {
-        "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt",
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt",
     },
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "fairseq-translator-wmt19-ru-en": 1024,
+    "fsmt-wmt19-ru-en": 1024,
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "fairseq-translator-wmt19-ru-en": { },
+    "fsmt-wmt19-ru-en": { },
 }
 
 
@@ -140,7 +140,7 @@ def remove_non_printing_char(text):
     return "".join(output)
 
 
-class FairseqTranslatorTokenizer(PreTrainedTokenizer):
+class FSMTTokenizer(PreTrainedTokenizer):
     """
     BPE tokenizer
 

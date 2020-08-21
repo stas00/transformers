@@ -19,14 +19,14 @@ import os
 import unittest
 
 from transformers.testing_utils import slow
-from transformers.tokenization_fs_translator import VOCAB_FILES_NAMES, FairseqTranslatorTokenizer
+from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
 
 from .test_tokenization_common import TokenizerTesterMixin
 
 
-class FairseqTranslatorTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
+class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
-    tokenizer_class = FairseqTranslatorTokenizer
+    tokenizer_class = FSMTTokenizer
 
     def setUp(self):
         super().setUp()
@@ -72,7 +72,7 @@ class FairseqTranslatorTokenizationTest(TokenizerTesterMixin, unittest.TestCase)
 
     def test_full_tokenizer(self):
         """ Adapted from Sennrich et al. 2015 and https://github.com/rsennrich/subword-nmt """
-        tokenizer = FairseqTranslatorTokenizer(self.vocab_file, self.merges_file)
+        tokenizer = FSMTTokenizer(self.vocab_file, self.merges_file)
 
         text = "lower"
         bpe_tokens = ["low", "er</w>"]
@@ -85,7 +85,7 @@ class FairseqTranslatorTokenizationTest(TokenizerTesterMixin, unittest.TestCase)
 
     @slow
     def test_sequence_builders(self):
-        tokenizer = FairseqTranslatorTokenizer.from_pretrained("fairseq-translator-wmt19-ru-en")
+        tokenizer = FSMTTokenizer.from_pretrained("fsmt-wmt19-ru-en")
 
         text = tokenizer.encode("sequence builders", add_special_tokens=False)
         text_2 = tokenizer.encode("multi-sequence build", add_special_tokens=False)

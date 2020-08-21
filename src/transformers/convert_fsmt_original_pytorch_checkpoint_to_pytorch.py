@@ -16,7 +16,7 @@
 
 # exec:
 # cd /code/huggingface/transformers-fair-wmt
-# PYTHONPATH="src" python src/transformers/convert_fs_translator_original_pytorch_checkpoint_to_pytorch.py --fairseq_transformer_checkpoint_path data/wmt19.ru-en.ensemble --pytorch_dump_folder_path data/wmt19-ru-en --src_lang ru --tgt_lang en
+# PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.ru-en.ensemble --pytorch_dump_folder_path data/wmt19-ru-en
 
 import argparse
 import json
@@ -29,8 +29,8 @@ import torch
 from pathlib import Path
 
 from transformers import CONFIG_NAME, WEIGHTS_NAME
-from transformers.tokenization_fs_translator import FairseqTranslatorTokenizer, VOCAB_FILES_NAMES
-from transformers.configuration_fs_translator import FairseqTranslatorConfig
+from transformers.tokenization_fsmt import FSMTTokenizer, VOCAB_FILES_NAMES
+from transformers.configuration_fsmt import FSMTConfig
 
 from fairseq.data.dictionary import Dictionary
 
@@ -58,21 +58,21 @@ def rewrite_dict_keys(d):
     return d2
     #return dict((re.sub(r'@@', '</w>', k, 0, re.M), v) if k.endswith('@@') else (k, v) for k, v in d.items())
 
-def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkpoint_path, pytorch_dump_folder_path):
+def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder_path):
 
     #vocab_file = os.path.join(pytorch_dump_folder_path, VOCAB_FILES_NAMES["vocab_file"])
     merge_file = os.path.join(pytorch_dump_folder_path, VOCAB_FILES_NAMES["merges_file"])
 
     # prep
-    assert os.path.exists(fairseq_transformer_checkpoint_path)
+    assert os.path.exists(fsmt_checkpoint_path)
     os.makedirs(pytorch_dump_folder_path, exist_ok=True)
 
     print(f"Writing results to {pytorch_dump_folder_path}")
 
 
     # XXX: what about 2,3,4? need to merge the ensemble
-    fairseq_transformer_checkpoint = os.path.join(fairseq_transformer_checkpoint_path, "model1.pt")
-    chkpt = torch.load(fairseq_transformer_checkpoint, map_location="cpu")
+    fsmt_checkpoint = os.path.join(fsmt_checkpoint_path, "model1.pt")
+    chkpt = torch.load(fsmt_checkpoint, map_location="cpu")
     conf_orig = vars(chkpt["args"])
     #print(dir(chkpt))
 
@@ -81,8 +81,8 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
 
     # done:
     # convert dicts
-    src_dict_file = os.path.join(fairseq_transformer_checkpoint_path, f"dict.{src_lang}.txt")
-    tgt_dict_file = os.path.join(fairseq_transformer_checkpoint_path, f"dict.{tgt_lang}.txt")
+    src_dict_file = os.path.join(fsmt_checkpoint_path, f"dict.{src_lang}.txt")
+    tgt_dict_file = os.path.join(fsmt_checkpoint_path, f"dict.{tgt_lang}.txt")
 
     # XXX: adjust json.dumps to not have new lines with indent=None
     src_dict = Dictionary.load(src_dict_file)
@@ -103,7 +103,7 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
 
     # done:
     # convert merge_file (bpecodes)
-    fairseq_merge_file = os.path.join(fairseq_transformer_checkpoint_path, "bpecodes")
+    fairseq_merge_file = os.path.join(fsmt_checkpoint_path, "bpecodes")
     with open(fairseq_merge_file, encoding="utf-8") as fin:
         merges = fin.read()
     # not needed, already uses </w>
@@ -138,7 +138,7 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
         "add_bias_logits": False,
         "add_final_layer_norm": False,
         "architectures": [
-          "FairseqTranslatorForConditionalGeneration"
+          "FSMTForConditionalGeneration"
         ],
         "attention_dropout": conf_orig["attention_dropout"],
         "classif_dropout": 0.0,
@@ -207,10 +207,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Required parameters
     parser.add_argument(
-        "--fairseq_transformer_checkpoint_path", default=None, type=str, required=True, help="Path to the official PyTorch dump dir."
+        "--fsmt_checkpoint_path", default=None, type=str, required=True, help="Path to the official PyTorch dump dir."
     )
     parser.add_argument(
         "--pytorch_dump_folder_path", default=None, type=str, required=True, help="Path to the output PyTorch model."
     )
     args = parser.parse_args()
-    convert_fairseq_transformer_checkpoint_to_pytorch(args.fairseq_transformer_checkpoint_path, args.pytorch_dump_folder_path)
+    convert_fsmt_checkpoint_to_pytorch(args.fsmt_checkpoint_path, args.pytorch_dump_folder_path)

@@ -44,45 +44,45 @@ from .modeling_outputs import (
     Seq2SeqSequenceClassifierOutput,
 )
 
-from .configuration_fs_translator import FairseqTranslatorConfig
+from .configuration_fsmt import FSMTConfig
 from .modeling_utils import PreTrainedModel
 
 
 logger = logging.getLogger(__name__)
 
-_CONFIG_FOR_DOC = "FairseqTranslatorConfig"
-_TOKENIZER_FOR_DOC = "FairseqTranslatorTokenizer"
+_CONFIG_FOR_DOC = "FSMTConfig"
+_TOKENIZER_FOR_DOC = "FSMTTokenizer"
 
 
-FAIRSEQ_TRANSLATOR_PRETRAINED_MODEL_ARCHIVE_LIST = [
+FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/"
     # See all XXX models at https://huggingface.co/models?filter=XXX
 ]
 
 
 
-# See all FairseqTranslator models at https://huggingface.co/models?search=XXX
+# See all FSMT models at https://huggingface.co/models?search=XXX
 
 
-FAIRSEQ_TRANSLATOR_START_DOCSTRING = r"""
+FSMT_START_DOCSTRING = r"""
 
     This model is a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`_ sub-class. Use it as a regular PyTorch Module and
     refer to the PyTorch documentation for all matters related to general usage and behavior.
 
     Parameters:
-        config (:class:`~transformers.FairseqTranslatorConfig`): Model configuration class with all the parameters of the model.
+        config (:class:`~transformers.FSMTConfig`): Model configuration class with all the parameters of the model.
             Initializing with a config file does not load the weights associated with the model, only the configuration.
             Check out the :meth:`~transformers.PreTrainedModel.from_pretrained` method to load the model weights.
 
 """
-FAIRSEQ_TRANSLATOR_GENERATION_EXAMPLE = r"""
+FSMT_GENERATION_EXAMPLE = r"""
     Summarization example::
 
-        from transformers import FairseqTranslatorTokenizer, FairseqTranslatorForConditionalGeneration, FairseqTranslatorConfig
+        from transformers import FSMTTokenizer, FSMTForConditionalGeneration, FSMTConfig
 
         # see ``examples/summarization/fairseqtranslator/run_eval.py`` for a longer example
-        model = FairseqTranslatorForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large-cnn')
-        tokenizer = FairseqTranslatorTokenizer.from_pretrained('facebook/fairseqtranslator-large-cnn')
+        model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large-cnn')
+        tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large-cnn')
 
         ARTICLE_TO_SUMMARIZE = "My friends are cool but they eat too many carbs."
         inputs = tokenizer([ARTICLE_TO_SUMMARIZE], max_length=1024, return_tensors='pt')
@@ -93,12 +93,12 @@ FAIRSEQ_TRANSLATOR_GENERATION_EXAMPLE = r"""
 
 """
 
-FAIRSEQ_TRANSLATOR_INPUTS_DOCSTRING = r"""
+FSMT_INPUTS_DOCSTRING = r"""
     Args:
         input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
-               Indices of input sequence tokens in the vocabulary. Use FairseqTranslatorTokenizer.encode to produce them.
+               Indices of input sequence tokens in the vocabulary. Use FSMTTokenizer.encode to produce them.
             Padding will be ignored by default should you provide it.
-            Indices can be obtained using :class:`transformers.FairseqTranslatorTokenizer.encode(text)`.
+            Indices can be obtained using :class:`transformers.FSMTTokenizer.encode(text)`.
         attention_mask (:obj:`torch.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
             Mask to avoid performing attention on padding token indices in input_ids.
             Mask values selected in ``[0, 1]``:
@@ -159,8 +159,8 @@ def _prepare_fairseqtranslator_decoder_inputs(
     return decoder_input_ids, decoder_padding_mask, causal_mask
 
 
-class PreTrainedFairseqTranslatorModel(PreTrainedModel):
-    config_class = FairseqTranslatorConfig
+class PreTrainedFSMTModel(PreTrainedModel):
+    config_class = FSMTConfig
     base_model_prefix = "model"
 
     def _init_weights(self, module):
@@ -221,7 +221,7 @@ def make_padding_mask(input_ids, padding_idx=1):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, config: FairseqTranslatorConfig):
+    def __init__(self, config: FSMTConfig):
         super().__init__()
         self.embed_dim = config.d_model
         self.self_attn = SelfAttention(
@@ -272,16 +272,16 @@ class EncoderLayer(nn.Module):
         return x, attn_weights
 
 
-class FairseqTranslatorEncoder(nn.Module):
+class FSMTEncoder(nn.Module):
     """
     Transformer encoder consisting of *config.encoder_layers* self attention layers. Each layer
     is a :class:`EncoderLayer`.
 
     Args:
-        config: FairseqTranslatorConfig
+        config: FSMTConfig
     """
 
-    def __init__(self, config: FairseqTranslatorConfig, embed_tokens):
+    def __init__(self, config: FSMTConfig, embed_tokens):
         super().__init__()
 
         self.dropout = config.dropout
@@ -369,7 +369,7 @@ class FairseqTranslatorEncoder(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, config: FairseqTranslatorConfig):
+    def __init__(self, config: FSMTConfig):
         super().__init__()
         self.embed_dim = config.d_model
         self.self_attn = SelfAttention(
@@ -457,16 +457,16 @@ class DecoderLayer(nn.Module):
         )  # just self_attn weights for now, following t5, layer_state = cache for decoding
 
 
-class FairseqTranslatorDecoder(nn.Module):
+class FSMTDecoder(nn.Module):
     """
     Transformer decoder consisting of *config.decoder_layers* layers. Each layer
     is a :class:`DecoderLayer`.
     Args:
-        config: FairseqTranslatorConfig
+        config: FSMTConfig
         embed_tokens (torch.nn.Embedding): output embedding
     """
 
-    def __init__(self, config: FairseqTranslatorConfig, embed_tokens: nn.Embedding):
+    def __init__(self, config: FSMTConfig, embed_tokens: nn.Embedding):
         super().__init__()
         self.dropout = config.dropout
         self.layerdrop = config.decoder_layerdrop
@@ -545,7 +545,7 @@ class FairseqTranslatorDecoder(nn.Module):
         x = self.layernorm_embedding(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
 
-        # Convert to FairseqTranslator output format: (seq_len, BS, model_dim) -> (BS, seq_len, model_dim)
+        # Convert to FSMT output format: (seq_len, BS, model_dim) -> (BS, seq_len, model_dim)
         x = x.transpose(0, 1)
         encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
 
@@ -761,7 +761,7 @@ class LearnedPositionalEmbedding(nn.Embedding):
     """
 
     def __init__(self, num_embeddings: int, embedding_dim: int, padding_idx: int, offset):
-        # FairseqTranslator is set up so that if padding_idx is specified then offset the embedding ids by 2
+        # FSMT is set up so that if padding_idx is specified then offset the embedding ids by 2
         # and adjust num_embeddings appropriately. Other models dont have this hack
         self.offset = offset
         assert padding_idx is not None
@@ -801,10 +801,10 @@ def _get_shape(t):
 
 
 @add_start_docstrings(
-    "The bare FAIRSEQ_TRANSLATOR Model outputting raw hidden-states without any specific head on top.", FAIRSEQ_TRANSLATOR_START_DOCSTRING,
+    "The bare FSMT Model outputting raw hidden-states without any specific head on top.", FSMT_START_DOCSTRING,
 )
-class FairseqTranslatorModel(PreTrainedFairseqTranslatorModel):
-    def __init__(self, config: FairseqTranslatorConfig):
+class FSMTModel(PreTrainedFSMTModel):
+    def __init__(self, config: FSMTConfig):
         super().__init__(config)
 
         padding_idx = config.pad_token_id
@@ -812,12 +812,12 @@ class FairseqTranslatorModel(PreTrainedFairseqTranslatorModel):
         self.encoder_embed_tokens = nn.Embedding(config.encoder_emd_tok_dim, config.d_model, padding_idx)
         self.decoder_embed_tokens = nn.Embedding(config.decoder_emd_tok_dim, config.d_model, padding_idx)
 
-        self.encoder = FairseqTranslatorEncoder(config, self.encoder_embed_tokens)
-        self.decoder = FairseqTranslatorDecoder(config, self.decoder_embed_tokens)
+        self.encoder = FSMTEncoder(config, self.encoder_embed_tokens)
+        self.decoder = FSMTDecoder(config, self.decoder_embed_tokens)
 
         self.init_weights()
 
-    @add_start_docstrings_to_callable(FAIRSEQ_TRANSLATOR_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_callable(FSMT_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
         checkpoint="facebook/fairseqtranslator-large",
@@ -926,15 +926,15 @@ class FairseqTranslatorModel(PreTrainedFairseqTranslatorModel):
 
 
 @add_start_docstrings(
-    "The FAIRSEQ_TRANSLATOR Model with a language modeling head. Can be used for summarization.", FAIRSEQ_TRANSLATOR_START_DOCSTRING
+    "The FSMT Model with a language modeling head. Can be used for summarization.", FSMT_START_DOCSTRING
 )
-class FairseqTranslatorForConditionalGeneration(PreTrainedFairseqTranslatorModel):
+class FSMTForConditionalGeneration(PreTrainedFSMTModel):
     base_model_prefix = "model"
     authorized_missing_keys = [r"final_logits_bias", r"encoder\.version", r"decoder\.version"]
 
-    def __init__(self, config: FairseqTranslatorConfig):
+    def __init__(self, config: FSMTConfig):
         super().__init__(config)
-        base_model = FairseqTranslatorModel(config)
+        base_model = FSMTModel(config)
         self.model = base_model
         # XXX: not in the original - do we need to remove it? or just use a bias of zeros?
         # should the number of embeddings be of enc or dec? probably dec, as it's out?
@@ -957,9 +957,9 @@ class FairseqTranslatorForConditionalGeneration(PreTrainedFairseqTranslatorModel
             new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
         self.register_buffer("final_logits_bias", new_bias)
 
-    @add_start_docstrings_to_callable(FAIRSEQ_TRANSLATOR_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_callable(FSMT_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Seq2SeqLMOutput, config_class=_CONFIG_FOR_DOC)
-    @add_end_docstrings(FAIRSEQ_TRANSLATOR_GENERATION_EXAMPLE)
+    @add_end_docstrings(FSMT_GENERATION_EXAMPLE)
     def forward(
         self,
         input_ids,
@@ -987,11 +987,11 @@ class FairseqTranslatorForConditionalGeneration(PreTrainedFairseqTranslatorModel
     Conditional generation example::
 
             # Mask filling only works for fairseqtranslator-large
-            from transformers import FairseqTranslatorTokenizer, FairseqTranslatorForConditionalGeneration
-            tokenizer = FairseqTranslatorTokenizer.from_pretrained('facebook/fairseqtranslator-large')
+            from transformers import FSMTTokenizer, FSMTForConditionalGeneration
+            tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large')
             TXT = "My friends are <mask> but they eat too many carbs."
 
-            model = FairseqTranslatorForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large')
+            model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large')
             input_ids = tokenizer([TXT], return_tensors='pt')['input_ids']
             logits = model(input_ids).logits
 

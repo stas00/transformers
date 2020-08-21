@@ -21,14 +21,14 @@ from .configuration_utils import PretrainedConfig
 
 logger = logging.getLogger(__name__)
 
-FAIRSEQ_TRANSLATOR_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-     "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/config.json",
+FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
+     "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/config.json",
 }
 
 # XXX: this one is modeled after BartConfig
-class FairseqTranslatorConfig(PretrainedConfig):
+class FSMTConfig(PretrainedConfig):
     r"""
-        Configuration class for FairseqTranslator. Parameters are renamed from the fairseq implementation
+        Configuration class for FSMT. Parameters are renamed from the fairseq implementation
 
     Differences with BART:
     - src/tgt vocabs aren't shared - token embeddings aren't shared
