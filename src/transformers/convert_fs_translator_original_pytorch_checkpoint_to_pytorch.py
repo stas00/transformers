@@ -30,15 +30,21 @@ from pathlib import Path
 
 from transformers import CONFIG_NAME, WEIGHTS_NAME
 from transformers.tokenization_fs_translator import FairseqTranslatorTokenizer, VOCAB_FILES_NAMES
+from transformers.configuration_fs_translator import FairseqTranslatorConfig
 
 from fairseq.data.dictionary import Dictionary
 
 logging.basicConfig(level=logging.INFO)
 
-VOCAB_FILES_NAMES = {
-    "vocab_file": "vocab.json",
-    "merges_file": "merges.txt",
-}
+# VOCAB_FILES_NAMES = {
+#     "vocab_file": "vocab.json",
+#     "merges_file": "merges.txt",
+# }
+
+
+DEBUG = 1
+
+json_indent = 2 if DEBUG else None
 
 def rewrite_dict_keys(d):
     # (1) remove word breaking symbol, (2) add word ending symbol where the word is not broken up
@@ -52,9 +58,9 @@ def rewrite_dict_keys(d):
     return d2
     #return dict((re.sub(r'@@', '</w>', k, 0, re.M), v) if k.endswith('@@') else (k, v) for k, v in d.items())
 
-def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkpoint_path, pytorch_dump_folder_path, src_lang, tgt_lang):
+def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkpoint_path, pytorch_dump_folder_path):
 
-    vocab_file = os.path.join(pytorch_dump_folder_path, VOCAB_FILES_NAMES["vocab_file"])
+    #vocab_file = os.path.join(pytorch_dump_folder_path, VOCAB_FILES_NAMES["vocab_file"])
     merge_file = os.path.join(pytorch_dump_folder_path, VOCAB_FILES_NAMES["merges_file"])
 
     # prep
@@ -62,6 +68,16 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
     os.makedirs(pytorch_dump_folder_path, exist_ok=True)
 
     print(f"Writing results to {pytorch_dump_folder_path}")
+
+
+    # XXX: what about 2,3,4? need to merge the ensemble
+    fairseq_transformer_checkpoint = os.path.join(fairseq_transformer_checkpoint_path, "model1.pt")
+    chkpt = torch.load(fairseq_transformer_checkpoint, map_location="cpu")
+    conf_orig = vars(chkpt["args"])
+    #print(dir(chkpt))
+
+    src_lang = conf_orig["source_lang"]
+    tgt_lang = conf_orig["target_lang"]
 
     # done:
     # convert dicts
@@ -71,18 +87,19 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
     # XXX: adjust json.dumps to not have new lines with indent=None
     src_dict = Dictionary.load(src_dict_file)
     src_vocab = rewrite_dict_keys(src_dict.indices)
+    src_vocab_size = len(src_vocab)
     pytorch_vocab_file_src = os.path.join(pytorch_dump_folder_path, f"vocab-{src_lang}.json")
     print(f"Generating {pytorch_vocab_file_src}")
     with open(pytorch_vocab_file_src, "w", encoding="utf-8") as f:
-        f.write(json.dumps(src_vocab, ensure_ascii=False, indent=2))
+        f.write(json.dumps(src_vocab, ensure_ascii=False, indent=json_indent))
 
-    # XXX: adjust json.dumps to not have new lines with indent=None
     tgt_dict = Dictionary.load(tgt_dict_file)
     tgt_vocab = rewrite_dict_keys(tgt_dict.indices)
+    tgt_vocab_size = len(tgt_vocab)
     pytorch_vocab_file_tgt = os.path.join(pytorch_dump_folder_path, f"vocab-{tgt_lang}.json")
     print(f"Generating {pytorch_vocab_file_tgt}")
     with open(pytorch_vocab_file_tgt, "w", encoding="utf-8") as f:
-        f.write(json.dumps(tgt_vocab, ensure_ascii=False, indent=2))
+        f.write(json.dumps(tgt_vocab, ensure_ascii=False, indent=json_indent))
 
     # done:
     # convert merge_file (bpecodes)
@@ -104,20 +121,83 @@ def convert_fairseq_transformer_checkpoint_to_pytorch(fairseq_transformer_checkp
     #     fout.write("\n".join(merges) + "\n")
 
 
+    # config + model
+
+
     # config - XXX: what really should go there, other than "do_lower_case": False,
     fairseq_config_file = os.path.join(pytorch_dump_folder_path, "config.json")
-    conf = {"do_lower_case": False, "model_max_length": 1024}
+
+    #conf = {"do_lower_case": False, "model_max_length": 1024}
+    #attrs_to_keep = "".split()
+    #conf = (x:conf_orig[x] for x in attrs_to_keep)
+
+
+    conf = {
+        "activation_dropout": 0.0,
+        "activation_function": "relu",
+        "add_bias_logits": False,
+        "add_final_layer_norm": False,
+        "architectures": [
+          "FairseqTranslatorForConditionalGeneration"
+        ],
+        "attention_dropout": conf_orig["attention_dropout"],
+        "classif_dropout": 0.0,
+        "d_model": conf_orig["decoder_embed_dim"],
+        "dropout": conf_orig["dropout"],
+
+        "encoder_attention_heads": conf_orig["encoder_attention_heads"],
+        "encoder_ffn_dim": conf_orig["encoder_ffn_embed_dim"],
+        "encoder_layerdrop": 0.0,
+        "encoder_layers":  conf_orig["encoder_layers"],
+        "encoder_emd_tok_dim": src_vocab_size,
+
+        "decoder_attention_heads": conf_orig["decoder_attention_heads"],
+        "decoder_ffn_dim": conf_orig["decoder_ffn_embed_dim"],
+        "decoder_layerdrop": 0.0,
+        "decoder_layers": conf_orig["decoder_layers"],
+        "decoder_emd_tok_dim": tgt_vocab_size,
+
+        "bos_token_id": 0,
+        "pad_token_id": 1,
+        "eos_token_id": 2,
+
+        "id2label": {
+          "0": "LABEL_0",
+          "1": "LABEL_1",
+          "2": "LABEL_2"
+        },
+        "init_std": 0.02,
+        "is_encoder_decoder": True,
+        "label2id": {
+          "LABEL_0": 0,
+          "LABEL_1": 1,
+          "LABEL_2": 2
+        },
+        "max_position_embeddings": 1024,
+        "model_type": "bart",
+        "normalize_before": False,
+        "normalize_embedding": True,
+        "num_hidden_layers": 6,
+
+        "scale_embedding": False,
+        "static_position_embeddings": True,
+#        "vocab_size": 31640, #src_vocab_size,
+    }
+
+
+
+
     print(f"Generating {fairseq_config_file}")
     with open(fairseq_config_file, "w", encoding="utf-8") as f:
-        f.write(json.dumps(conf, ensure_ascii=False, indent=None))
+        f.write(json.dumps(conf, ensure_ascii=False, indent=json_indent))
 
     # todo:
     # model
 
-    # XXX: what about 2,3,4? need to merge the ensemble
-    #fairseq_transformer_checkpoint = os.path.join(fairseq_transformer_checkpoint_path, "model1.pt")
-    #chkpt = torch.load(fairseq_transformer_checkpoint, map_location="cpu")
-    #print(dir(chkpt))
+    #model_orig = chkpt["model"]
+    #state_dict = model_orig.state_dict()
+
+
 
     #state_dict = chkpt["model"]
 
@@ -132,11 +212,5 @@ if __name__ == "__main__":
     parser.add_argument(
         "--pytorch_dump_folder_path", default=None, type=str, required=True, help="Path to the output PyTorch model."
     )
-    parser.add_argument(
-        "--src_lang", default=None, type=str, required=True, help="Source language (ru/de/en/fr)."
-    )
-    parser.add_argument(
-        "--tgt_lang", default=None, type=str, required=True, help="Target language."
-    )
     args = parser.parse_args()
-    convert_fairseq_transformer_checkpoint_to_pytorch(args.fairseq_transformer_checkpoint_path, args.pytorch_dump_folder_path, args.src_lang, args.tgt_lang)
+    convert_fairseq_transformer_checkpoint_to_pytorch(args.fairseq_transformer_checkpoint_path, args.pytorch_dump_folder_path)

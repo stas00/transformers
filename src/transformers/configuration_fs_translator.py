@@ -19,225 +19,128 @@ import logging
 
 from .configuration_utils import PretrainedConfig
 
-
 logger = logging.getLogger(__name__)
 
 FAIRSEQ_TRANSLATOR_PRETRAINED_CONFIG_ARCHIVE_MAP = {
      "fairseq-translator-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/config.json",
 }
 
-
+# XXX: this one is modeled after BartConfig
 class FairseqTranslatorConfig(PretrainedConfig):
+    r"""
+        Configuration class for FairseqTranslator. Parameters are renamed from the fairseq implementation
+
+    Differences with BART:
+    - src/tgt vocabs aren't shared - token embeddings aren't shared
+
     """
-        This is the configuration class to store the configuration of a :class:`~transformers.XLMModel`.
-        It is used to instantiate an XLM model according to the specified arguments, defining the model
-        architecture. Instantiating a configuration with the defaults will yield a similar configuration to that of
-        the `xlm-mlm-en-2048 <https://huggingface.co/xlm-mlm-en-2048>`__ architecture.
+    model_type = "fairseq"
 
-        Configuration objects inherit from  :class:`~transformers.PretrainedConfig` and can be used
-        to control the model outputs. Read the documentation from  :class:`~transformers.PretrainedConfig`
-        for more information.
-
-        Args:
-            vocab_size (:obj:`int`, optional, defaults to 30145):
-                Vocabulary size of the XLM model. Defines the different tokens that
-                can be represented by the `inputs_ids` passed to the forward method of :class:`~transformers.XLMModel`.
-            emb_dim (:obj:`int`, optional, defaults to 2048):
-                Dimensionality of the encoder layers and the pooler layer.
-            n_layer (:obj:`int`, optional, defaults to 12):
-                Number of hidden layers in the Transformer encoder.
-            n_head (:obj:`int`, optional, defaults to 16):
-                Number of attention heads for each attention layer in the Transformer encoder.
-            dropout (:obj:`float`, optional, defaults to 0.1):
-                The dropout probability for all fully connected
-                layers in the embeddings, encoder, and pooler.
-            attention_dropout (:obj:`float`, optional, defaults to 0.1):
-                The dropout probability for the attention mechanism
-            gelu_activation (:obj:`boolean`, optional, defaults to :obj:`True`):
-                The non-linear activation function (function or string) in the
-                encoder and pooler. If set to `True`, "gelu" will be used instead of "relu".
-            sinusoidal_embeddings (:obj:`boolean`, optional, defaults to :obj:`False`):
-                Whether to use sinusoidal positional embeddings instead of absolute positional embeddings.
-            causal (:obj:`boolean`, optional, defaults to :obj:`False`):
-                Set this to `True` for the model to behave in a causal manner.
-                Causal models use a triangular attention mask in order to only attend to the left-side context instead
-                if a bidirectional context.
-            asm (:obj:`boolean`, optional, defaults to :obj:`False`):
-                Whether to use an adaptive log softmax projection layer instead of a linear layer for the prediction
-                layer.
-            n_langs (:obj:`int`, optional, defaults to 1):
-                The number of languages the model handles. Set to 1 for monolingual models.
-            use_lang_emb (:obj:`boolean`, optional, defaults to :obj:`True`)
-                Whether to use language embeddings. Some models use additional language embeddings, see
-                `the multilingual models page <http://huggingface.co/transformers/multilingual.html#xlm-language-embeddings>`__
-                for information on how to use them.
-            max_position_embeddings (:obj:`int`, optional, defaults to 512):
-                The maximum sequence length that this model might
-                ever be used with. Typically set this to something large just in case
-                (e.g., 512 or 1024 or 2048).
-            embed_init_std (:obj:`float`, optional, defaults to 2048^-0.5):
-                The standard deviation of the truncated_normal_initializer for
-                initializing the embedding matrices.
-            init_std (:obj:`int`, optional, defaults to 50257):
-                The standard deviation of the truncated_normal_initializer for
-                initializing all weight matrices except the embedding matrices.
-            layer_norm_eps (:obj:`float`, optional, defaults to 1e-12):
-                The epsilon used by the layer normalization layers.
-            bos_index (:obj:`int`, optional, defaults to 0):
-                The index of the beginning of sentence token in the vocabulary.
-            eos_index (:obj:`int`, optional, defaults to 1):
-                The index of the end of sentence token in the vocabulary.
-            pad_index (:obj:`int`, optional, defaults to 2):
-                The index of the padding token in the vocabulary.
-            unk_index (:obj:`int`, optional, defaults to 3):
-                The index of the unknown token in the vocabulary.
-            mask_index (:obj:`int`, optional, defaults to 5):
-                The index of the masking token in the vocabulary.
-            is_encoder(:obj:`boolean`, optional, defaults to :obj:`True`):
-                Whether the initialized model should be a transformer encoder or decoder as seen in Vaswani et al.
-            summary_type (:obj:`string`, optional, defaults to "first"):
-                Argument used when doing sequence summary. Used in for the multiple choice head in
-                :class:`~transformers.XLMForSequenceClassification`.
-                Is one of the following options:
-
-                - 'last' => take the last token hidden state (like XLNet)
-                - 'first' => take the first token hidden state (like Bert)
-                - 'mean' => take the mean of all tokens hidden states
-                - 'cls_index' => supply a Tensor of classification token position (GPT/GPT-2)
-                - 'attn' => Not implemented now, use multi-head attention
-            summary_use_proj (:obj:`boolean`, optional, defaults to :obj:`True`):
-                Argument used when doing sequence summary. Used in for the multiple choice head in
-                :class:`~transformers.XLMForSequenceClassification`.
-                Add a projection after the vector extraction
-            summary_activation (:obj:`string` or :obj:`None`, optional, defaults to :obj:`None`):
-                Argument used when doing sequence summary. Used in for the multiple choice head in
-                :class:`~transformers.XLMForSequenceClassification`.
-                'tanh' => add a tanh activation to the output, Other => no activation.
-            summary_proj_to_labels (:obj:`boolean`, optional, defaults to :obj:`True`):
-                Argument used when doing sequence summary. Used in for the multiple choice head in
-                :class:`~transformers.XLMForSequenceClassification`.
-                If True, the projection outputs to config.num_labels classes (otherwise to hidden_size). Default: False.
-            summary_first_dropout (:obj:`float`, optional, defaults to 0.1):
-                Argument used when doing sequence summary. Used in for the multiple choice head in
-                :class:`~transformers.XLMForSequenceClassification`.
-                Add a dropout before the projection and activation
-            start_n_top (:obj:`int`, optional, defaults to 5):
-                Used in the SQuAD evaluation script for XLM and XLNet.
-            end_n_top (:obj:`int`, optional, defaults to 5):
-                Used in the SQuAD evaluation script for XLM and XLNet.
-            mask_token_id (:obj:`int`, optional, defaults to 0):
-                Model agnostic parameter to identify masked tokens when generating text in an MLM context.
-            lang_id (:obj:`int`, optional, defaults to 1):
-                The ID of the language used by the model. This parameter is used when generating
-                text in a given language.
-
-        Example::
-
-            >>> from transformers import XLMConfig, XLMModel
-
-            >>> # Initializing a XLM configuration
-            >>> configuration = XLMConfig()
-
-            >>> # Initializing a model from the configuration
-            >>> model = XLMModel(configuration)
-
-            >>> # Accessing the model configuration
-            >>> configuration = model.config
-    """
-
-    model_type = "xlm"
-
+    # update the defaults from config file
     def __init__(
         self,
-        vocab_size=30145,
-        emb_dim=2048,
-        n_layers=12,
-        n_heads=16,
+        activation_dropout=0.0,
+        extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
+        activation_function="relu",  # changed
+        # vocab_size=50265, replaced by encoder_emd_tok_dim/decoder_emd_tok_dim
+        d_model=1024,
+        encoder_ffn_dim=4096,
+        encoder_layers=12,
+        encoder_attention_heads=16,
+        encoder_emd_tok_dim=0, # new / src vocab_size
+        decoder_ffn_dim=4096,
+        decoder_layers=12,
+        decoder_attention_heads=16,
+        encoder_layerdrop=0.0,
+        decoder_layerdrop=0.0,
+        decoder_emd_tok_dim=0, # new / tgt vocab_size
+        attention_dropout=0.0,
         dropout=0.1,
-        attention_dropout=0.1,
-        gelu_activation=True,
-        sinusoidal_embeddings=False,
-        causal=False,
-        asm=False,
-        n_langs=1,
-        use_lang_emb=True,
-        max_position_embeddings=512,
-        embed_init_std=2048 ** -0.5,
-        layer_norm_eps=1e-12,
+        max_position_embeddings=1024,
         init_std=0.02,
-        bos_index=0,
-        eos_index=1,
-        pad_index=2,
-        unk_index=3,
-        mask_index=5,
-        is_encoder=True,
-        summary_type="first",
-        summary_use_proj=True,
-        summary_activation=None,
-        summary_proj_to_labels=True,
-        summary_first_dropout=0.1,
-        start_n_top=5,
-        end_n_top=5,
-        mask_token_id=0,
-        lang_id=0,
-        pad_token_id=2,
+        classifier_dropout=0.0,
+        num_labels=3,
+        is_encoder_decoder=True,
+        pad_token_id=1,
         bos_token_id=0,
-        **kwargs
+        eos_token_id=2,
+        normalize_before=False,
+        add_final_layer_norm=False,
+        scale_embedding=False,
+        normalize_embedding=True,
+        static_position_embeddings=True,
+        add_bias_logits=False,
+        **common_kwargs
     ):
-        """Constructs XLMConfig.
+        r"""
+            :class:`~transformers.BartConfig` is the configuration class for `BartModel`.
+
+            Examples::
+
+                >>> from transformers import BartConfig, BartModel
+
+                >>> config = BartConfig.from_pretrained('facebook/bart-large')
+                >>> model = BartModel(config)
+
         """
-        super().__init__(pad_token_id=pad_token_id, bos_token_id=bos_token_id, **kwargs)
-        self.vocab_size = vocab_size
-        self.emb_dim = emb_dim
-        self.n_layers = n_layers
-        self.n_heads = n_heads
-        self.dropout = dropout
-        self.attention_dropout = attention_dropout
-        self.gelu_activation = gelu_activation
-        self.sinusoidal_embeddings = sinusoidal_embeddings
-        self.causal = causal
-        self.asm = asm
-        self.n_langs = n_langs
-        self.use_lang_emb = use_lang_emb
-        self.layer_norm_eps = layer_norm_eps
-        self.bos_index = bos_index
-        self.eos_index = eos_index
-        self.pad_index = pad_index
-        self.unk_index = unk_index
-        self.mask_index = mask_index
-        self.is_encoder = is_encoder
+        if "hidden_size" in common_kwargs:
+            raise ValueError("hidden size is called d_model")
+        super().__init__(
+            num_labels=num_labels,
+            pad_token_id=pad_token_id,
+            bos_token_id=bos_token_id,
+            eos_token_id=eos_token_id,
+            is_encoder_decoder=is_encoder_decoder,
+            **common_kwargs,
+        )
+        self.encoder_emd_tok_dim = encoder_emd_tok_dim
+        self.decoder_emd_tok_dim = decoder_emd_tok_dim
+        self.d_model = d_model  # encoder_embed_dim and decoder_embed_dim
+        self.encoder_ffn_dim = encoder_ffn_dim
+        self.encoder_layers = self.num_hidden_layers = encoder_layers
+        self.encoder_attention_heads = encoder_attention_heads
+        self.encoder_layerdrop = encoder_layerdrop
+        self.decoder_layerdrop = decoder_layerdrop
+        self.decoder_ffn_dim = decoder_ffn_dim
+        self.decoder_layers = decoder_layers
+        self.decoder_attention_heads = decoder_attention_heads
         self.max_position_embeddings = max_position_embeddings
-        self.embed_init_std = embed_init_std
-        self.init_std = init_std
-        self.summary_type = summary_type
-        self.summary_use_proj = summary_use_proj
-        self.summary_activation = summary_activation
-        self.summary_proj_to_labels = summary_proj_to_labels
-        self.summary_first_dropout = summary_first_dropout
-        self.start_n_top = start_n_top
-        self.end_n_top = end_n_top
-        self.mask_token_id = mask_token_id
-        self.lang_id = lang_id
+        self.init_std = init_std  # Normal(0, this parameter)
+        self.activation_function = activation_function
 
-        if "n_words" in kwargs:
-            self.n_words = kwargs["n_words"]
+        # Params introduced for Mbart
+        self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
+        self.normalize_embedding = normalize_embedding  # True for mbart, False otherwise
+        self.normalize_before = normalize_before  # combo of fairseq's encoder_ and decoder_normalize_before
+        self.add_final_layer_norm = add_final_layer_norm
 
-    @property
-    def n_words(self):  # For backward compatibility
-        return self.vocab_size
+        # Params introduced for Marian
+        self.add_bias_logits = add_bias_logits
+        self.static_position_embeddings = static_position_embeddings
 
-    @n_words.setter
-    def n_words(self, value):  # For backward compatibility
-        self.vocab_size = value
+        # 3 Types of Dropout
+        self.attention_dropout = attention_dropout
+        self.activation_dropout = activation_dropout
+        self.dropout = dropout
 
-    @property
-    def hidden_size(self):
-        return self.emb_dim
+        # Classifier stuff
+        self.classif_dropout = classifier_dropout
+
+        # pos embedding offset
+        self.extra_pos_embeddings = self.pad_token_id + 1
 
     @property
-    def num_attention_heads(self):
-        return self.n_heads
+    def num_attention_heads(self) -> int:
+        return self.encoder_attention_heads
 
     @property
-    def num_hidden_layers(self):
-        return self.n_layers
+    def hidden_size(self) -> int:
+        return self.d_model
+
+    def is_valid_mbart(self) -> bool:
+        """Is the configuration aligned with the MBART paper."""
+        if self.normalize_before and self.add_final_layer_norm and self.scale_embedding:
+            return True
+        if self.normalize_before or self.add_final_layer_norm or self.scale_embedding:
+            logger.info("This configuration is a mixture of MBART and BART settings")
+        return False
