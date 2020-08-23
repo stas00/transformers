@@ -176,7 +176,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         "max_position_embeddings": 1024,
         "model_type": "bart",
         "normalize_before": False,
-        "normalize_embedding": True,
+        "normalize_embedding": False,
         "num_hidden_layers": 6,
 
         "scale_embedding": False,

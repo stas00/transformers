@@ -923,6 +923,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
 
             load(model_to_load, prefix=start_prefix)
 
+            #import ipdb; ipdb.set_trace()
+
             if model.__class__.__name__ != model_to_load.__class__.__name__:
                 base_model_state_dict = model_to_load.state_dict().keys()
                 head_model_state_dict_without_base_prefix = [

@@ -67,7 +67,7 @@ class FSMTConfig(PretrainedConfig):
         normalize_before=False,
         add_final_layer_norm=False,
         scale_embedding=False,
-        normalize_embedding=True,
+        normalize_embedding=False,
         static_position_embeddings=True,
         add_bias_logits=False,
         **common_kwargs

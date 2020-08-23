@@ -4,9 +4,13 @@
 
 ### Missing/Different
 
-1. Missing
+V 1. Missing
 
-final_logits_bias
+final_logits_bias:
+
+For now emulate a non-existing layer - XXX: perhaps it'll be removed instead in the model - for now just a bias of 0's
+state_dict["final_logits_bias"] = torch.zeros((1, state_dict["model.decoder.embed_tokens.weight"].shape[0]))
+state_dict["final_logits_bias"].shape # torch.Size([1, 31640])
 
 2. Missing
 
@@ -46,14 +50,17 @@ model.encoder.layers.0.self_attn.v_proj.weight
 model.encoder.layers.0.self_attn.v_proj.bias
 model.encoder.layers.0.self_attn.q_proj.weight
 model.encoder.layers.0.self_attn.q_proj.bias
+
 model.encoder.layers.0.self_attn_layer_norm.weight
 model.encoder.layers.0.self_attn_layer_norm.bias
+
 model.decoder.layers.0.self_attn.k_proj.weight
 model.decoder.layers.0.self_attn.k_proj.bias
 model.decoder.layers.0.self_attn.v_proj.weight
 model.decoder.layers.0.self_attn.v_proj.bias
 model.decoder.layers.0.self_attn.q_proj.weight
 model.decoder.layers.0.self_attn.q_proj.bias
+
 model.decoder.layers.0.encoder_attn.k_proj.weight
 model.decoder.layers.0.encoder_attn.k_proj.bias
 model.decoder.layers.0.encoder_attn.v_proj.weight
@@ -66,8 +73,10 @@ Have these:
 
 model.encoder.layers.0.self_attn.in_proj_weight
 model.encoder.layers.0.self_attn.in_proj_bias
+
 model.decoder.layers.0.self_attn.in_proj_weight
 model.decoder.layers.0.self_attn.in_proj_bias
+
 model.decoder.layers.0.encoder_attn.in_proj_weight
 model.decoder.layers.0.encoder_attn.in_proj_bias
 

@@ -488,6 +488,14 @@ class FSMTDecoder(nn.Module):
         self.layernorm_embedding = LayerNorm(config.d_model) if config.normalize_embedding else nn.Identity()
         self.layer_norm = LayerNorm(config.d_model) if config.add_final_layer_norm else None
 
+        # XXX: also add to init_weights
+        self.output_projection = nn.Linear(
+                self.embed_tokens.weight.shape[1],
+                self.embed_tokens.weight.shape[0],
+                bias=False,
+            )
+
+
     def forward(
         self,
         input_ids,
@@ -580,6 +588,9 @@ class FSMTDecoder(nn.Module):
                 x = self.layer_norm(x)
             if output_attentions:
                 all_self_attns += (layer_self_attn,)
+
+        # new
+        x = self.output_projection(x)
 
         # Convert to standard output format: (seq_len, BS, model_dim) -> (BS, seq_len, model_dim)
         if output_hidden_states:
@@ -799,6 +810,12 @@ def fill_with_neg_inf(t):
 def _get_shape(t):
     return getattr(t, "shape", None)
 
+# def output_projection(self):
+#     return nn.Linear(
+#         self.embed_tokens.weight.shape[1],
+#         self.embed_tokens.weight.shape[0],
+#         bias=False,
+#     )
 
 @add_start_docstrings(
     "The bare FSMT Model outputting raw hidden-states without any specific head on top.", FSMT_START_DOCSTRING,
@@ -1032,7 +1049,8 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
             return_dict=return_dict,
         )
         # XXX: changed .shared to .decoder_embed_tokens
-        lm_logits = F.linear(outputs[0], self.model.decoder_embed_tokens.weight, bias=self.final_logits_bias)
+        #lm_logits = F.linear(outputs[0], self.model.decoder_embed_tokens.weight, bias=self.final_logits_bias.squeeze())
+        lm_logits = outputs[0]
 
         masked_lm_loss = None
         if labels is not None:
@@ -1108,7 +1126,7 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
         return self.model.encoder
 
     def get_output_embeddings(self):
-        return self.decoder_embed_tokens
+        return self.model.decoder.embed_tokens
         # XXX: it was, but probably not needed here
         # return _make_linear_from_emb(self.decoder_embed_tokens)  # make it on the fly
 
