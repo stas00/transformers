@@ -360,12 +360,16 @@ class GenerationMixin:
         # current position and vocab size
         if hasattr(self.config, "vocab_size"):
             vocab_size = self.config.vocab_size
-        elif (
-            self.config.is_encoder_decoder
-            and hasattr(self.config, "decoder")
-            and hasattr(self.config.decoder, "vocab_size")
-        ):
-            vocab_size = self.config.decoder.vocab_size
+        elif (self.config.is_encoder_decoder):
+            if hasattr(self.config, "decoder_emd_tok_dim"):
+                vocab_size = self.config.decoder_emd_tok_dim
+            elif (
+                    hasattr(self.config, "decoder")
+                    and hasattr(self.config.decoder, "vocab_size")
+            ):
+                vocab_size = self.config.decoder.vocab_size
+        if vocab_size is None:
+            raise ValueError("vocab_size has to be defined")
 
         # set effective batch size and effective batch multiplier according to do_sample
         if do_sample:
@@ -410,7 +414,7 @@ class GenerationMixin:
             )  # shape: (batch_size * num_return_sequences * num_beams, cur_len)
 
         if self.config.is_encoder_decoder:
-            # create empty decoder_input_ids
+            # create empty decoder input_ids
             input_ids = torch.full(
                 (effective_batch_size * num_beams, 1),
                 decoder_start_token_id,

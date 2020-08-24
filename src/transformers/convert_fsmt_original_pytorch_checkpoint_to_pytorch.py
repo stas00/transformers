@@ -131,6 +131,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
     #attrs_to_keep = "".split()
     #conf = (x:conf_orig[x] for x in attrs_to_keep)
 
+    # XXX: need to compare with the other pre-trained models and only set here what's different between them - the common settings go into config_fsmt
 
     conf = {
         "activation_dropout": 0.0,
@@ -179,7 +180,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         "normalize_embedding": False,
         "num_hidden_layers": 6,
 
-        "scale_embedding": False,
+        "scale_embedding": True,
         "static_position_embeddings": True,
 #        "vocab_size": 31640, #src_vocab_size,
     }
