@@ -108,6 +108,10 @@ class FSMTConfig(PretrainedConfig):
         self.init_std = init_std  # Normal(0, this parameter)
         self.activation_function = activation_function
 
+        # XXX: needed in generation_utils.py:382
+        # alternatively need to setup config.decoder object
+        self.decoder_start_token_id = eos_token_id
+
         # Params introduced for Mbart
         self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
         self.normalize_embedding = normalize_embedding  # True for mbart, False otherwise

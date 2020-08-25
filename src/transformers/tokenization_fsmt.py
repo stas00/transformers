@@ -31,17 +31,22 @@ from .tokenization_utils import PreTrainedTokenizer
 logger = logging.getLogger(__name__)
 
 VOCAB_FILES_NAMES = {
-    "vocab_file": "vocab.json",
+    "src_vocab_file": "vocab-src.json",
+    "tgt_vocab_file": "vocab-tgt.json",
     "merges_file": "merges.txt",
 }
 
 PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
+    "src_vocab_file": {
         "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
     },
-    "merges_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt",
+    "tgt_vocab_file": {
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-en.json",
     },
+    "merges_file": {
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt"
+    },
+
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
@@ -157,7 +162,8 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def __init__(
         self,
-        vocab_file,
+        src_vocab_file,
+        tgt_vocab_file,
         merges_file,
         unk_token="<unk>",
         bos_token="<s>",
@@ -193,6 +199,10 @@ class FSMTTokenizer(PreTrainedTokenizer):
             **kwargs,
         )
 
+        self.src_vocab_file = src_vocab_file
+        self.tgt_vocab_file = tgt_vocab_file
+        self.merges_file = merges_file
+
         # cache of sm.MosesPunctNormalizer instance
         self.cache_moses_punct_normalizer = dict()
         # cache of sm.MosesTokenizer instance
@@ -208,9 +218,11 @@ class FSMTTokenizer(PreTrainedTokenizer):
         self.ja_word_tokenizer = None
         self.zh_word_tokenizer = None
 
-        with open(vocab_file, encoding="utf-8") as vocab_handle:
-            self.encoder = json.load(vocab_handle)
-        self.decoder = {v: k for k, v in self.encoder.items()}
+        with open(src_vocab_file, encoding="utf-8") as src_vocab_handle:
+            self.encoder = json.load(src_vocab_handle)
+        with open(tgt_vocab_file, encoding="utf-8") as tgt_vocab_handle:
+            tgt_vocab = json.load(tgt_vocab_handle)
+            self.decoder = {v: k for k, v in tgt_vocab.items()}
         with open(merges_file, encoding="utf-8") as merges_handle:
             merges = merges_handle.read().split("\n")[:-1]
         merges = [tuple(merge.split()[:2]) for merge in merges]
@@ -260,11 +272,19 @@ class FSMTTokenizer(PreTrainedTokenizer):
         return list(self.ja_word_tokenizer.getWS(text))
 
     @property
-    def vocab_size(self):
+    def src_vocab_size(self):
         return len(self.encoder)
 
-    def get_vocab(self):
+    @property
+    def tgt_vocab_size(self):
+        return len(self.decoder)
+
+    def get_src_vocab(self):
         return dict(self.encoder, **self.added_tokens_encoder)
+
+    def get_tgt_vocab(self):
+        # XXX: .added_tokens_decoder?
+        return dict(self.decoder, **self.added_tokens_encoder)
 
     def bpe(self, token):
         word = tuple(token[:-1]) + (token[-1] + "</w>",)
@@ -494,10 +514,11 @@ class FSMTTokenizer(PreTrainedTokenizer):
         if not os.path.isdir(save_directory):
             logger.error("Vocabulary path ({}) should be a directory".format(save_directory))
             return
-        vocab_file = os.path.join(save_directory, VOCAB_FILES_NAMES["vocab_file"])
-        merge_file = os.path.join(save_directory, VOCAB_FILES_NAMES["merges_file"])
+        src_vocab_file = os.path.join(save_directory, self.src_vocab_file)
+        merges_file = os.path.join(save_directory, self.merges_file)
 
-        with open(vocab_file, "w", encoding="utf-8") as f:
+        # XXX: do we need to save the tgt_vocab_file too?
+        with open(src_vocab_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.encoder, ensure_ascii=False))
 
         index = 0
@@ -512,4 +533,4 @@ class FSMTTokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
-        return vocab_file, merge_file
+        return src_vocab_file, merge_file

@@ -500,7 +500,10 @@ class FSMTDecoder(nn.Module):
                 self.embed_tokens.weight.shape[0],
                 bias=False,
             )
-
+        # self.output_projection.weight = self.embed_tokens.weight
+        #nn.init.normal_(
+        #    self.output_projection.weight, mean=0, std=self.output_embed_dim ** -0.5
+        #)
 
     def forward(
         self,
@@ -595,14 +598,15 @@ class FSMTDecoder(nn.Module):
             if output_attentions:
                 all_self_attns += (layer_self_attn,)
 
-        # new
-        x = self.output_projection(x)
-
         # Convert to standard output format: (seq_len, BS, model_dim) -> (BS, seq_len, model_dim)
         if output_hidden_states:
             all_hidden_states = tuple(hidden_state.transpose(0, 1) for hidden_state in all_hidden_states)
         x = x.transpose(0, 1)
         encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
+
+        # new XXX: not invoked? self.project_out_dim==None in fairseq
+        # but it then gets invoked later in x.output_layer() transformer.py:676
+        x = self.output_projection(x)
 
         if use_cache:
             next_cache = ((encoder_hidden_states, encoder_padding_mask), next_decoder_cache)
@@ -915,6 +919,10 @@ class FSMTModel(PreTrainedFSMTModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+
+#        decoder_outputs = self.decoder.output_projection(decoder_outputs)
+# XXX: need to sort out the output_projection bit - fairseq does it at transformer.py:676
+# probably somewhere at the end of decoder()
 
         if not return_dict:
             return decoder_outputs + encoder_outputs
