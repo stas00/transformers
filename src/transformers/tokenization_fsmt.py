@@ -215,9 +215,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         if lang2id is not None and id2lang is not None:
             assert len(lang2id) == len(id2lang)
 
-        self.ja_word_tokenizer = None
-        self.zh_word_tokenizer = None
-
         with open(src_vocab_file, encoding="utf-8") as src_vocab_handle:
             self.encoder = json.load(src_vocab_handle)
         with open(tgt_vocab_file, encoding="utf-8") as tgt_vocab_handle:
@@ -251,26 +248,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         text = remove_non_printing_char(text)
         return text
 
-    def ja_tokenize(self, text):
-        if self.ja_word_tokenizer is None:
-            try:
-                import Mykytea
-
-                self.ja_word_tokenizer = Mykytea.Mykytea(
-                    "-model %s/local/share/kytea/model.bin" % os.path.expanduser("~")
-                )
-            except (AttributeError, ImportError):
-                logger.error(
-                    "Make sure you install KyTea (https://github.com/neubig/kytea) and it's python wrapper (https://github.com/chezou/Mykytea-python) with the following steps"
-                )
-                logger.error("1. git clone git@github.com:neubig/kytea.git && cd kytea")
-                logger.error("2. autoreconf -i")
-                logger.error("3. ./configure --prefix=$HOME/local")
-                logger.error("4. make && make install")
-                logger.error("5. pip install kytea")
-                raise
-        return list(self.ja_word_tokenizer.getWS(text))
-
     @property
     def src_vocab_size(self):
         return len(self.encoder)
@@ -283,8 +260,7 @@ class FSMTTokenizer(PreTrainedTokenizer):
         return dict(self.encoder, **self.added_tokens_encoder)
 
     def get_tgt_vocab(self):
-        # XXX: .added_tokens_decoder?
-        return dict(self.decoder, **self.added_tokens_encoder)
+        return dict(self.decoder, **self.added_tokens_decoder)
 
     def bpe(self, token):
         word = tuple(token[:-1]) + (token[-1] + "</w>",)
@@ -332,35 +308,15 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def _tokenize(self, text, lang="en", bypass_tokenizer=False):
         """
-        Tokenize a string given language code. For Chinese, Japanese and Thai, we use a language specific tokenizerself. Otherwise, we use Moses.
+        Tokenize a string given language code using Moses.
 
         Details of tokenization:
         - [sacremoses](https://github.com/alvations/sacremoses): port of Moses
             - Install with `pip install sacremoses`
-        - [pythainlp](https://github.com/PyThaiNLP/pythainlp): Thai tokenizer
-            - Install with `pip install pythainlp`
-        - [kytea](https://github.com/chezou/Mykytea-python): Japanese tokenizer, wrapper of [KyTea](https://github.com/neubig/kytea)
-            - Install with the following steps:
-            ```
-            git clone git@github.com:neubig/kytea.git && cd kytea
-            autoreconf -i
-            ./configure --prefix=$HOME/local
-            make && make install
-            pip install kytea
-            ```
-        - [jieba](https://github.com/fxsjy/jieba): Chinese tokenizer (*)
-            - Install with `pip install jieba`
-
-        (*) The original FAIRSEQ_TRANSFORMER used [Stanford Segmenter](https://nlp.stanford.edu/software/stanford-segmenter-2018-10-16.zip).
-        However, the wrapper (`nltk.tokenize.stanford_segmenter`) is slow due to JVM overhead, and it will be deprecated.
-        Jieba is a lot faster and pip-installable. Note there is some mismatch with the Stanford Segmenter. It should be fine
-        if you fine-tune the model with Chinese supervisionself. If you want the same exact behaviour, use the original FAIRSEQ_TRANSFORMER
-        [preprocessing script](https://github.com/facebookresearch/FAIRSEQ_TRANSFORMER/tree/master/tools) to tokenize the sentence externally,
-        and set `bypass_tokenizer=True` to bypass the tokenizer.
 
         Args:
             - lang: ISO language code (default = 'en') (string). Languages should belong of the model supported languages. However, we don't enforce it.
-            - bypass_tokenizer: Allow users to preprocess and tokenize the sentences externally (default = False)  (bool). If True, we only apply BPE.
+            - bypass_tokenizer: Allow users to preprocess and tokenize the sentences externally (default = False) (bool). If True, we only apply BPE.
 
         Returns:
             List of tokens.
@@ -428,9 +384,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         if token_ids_1 is None:
             return token_ids_0 + sep
         return token_ids_0 + sep + token_ids_1 + sep
-        # if token_ids_1 is None:
-        #     return bos + token_ids_0 + sep
-        # return bos + token_ids_0 + sep + token_ids_1 + sep
 
     def get_special_tokens_mask(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None, already_has_special_tokens: bool = False
@@ -462,9 +415,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         if token_ids_1 is not None:
             return ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
         return ([0] * len(token_ids_0)) + [1]
-        # if token_ids_1 is not None:
-        #     return [1] + ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
-        # return [1] + ([0] * len(token_ids_0)) + [1]
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
@@ -491,14 +441,11 @@ class FSMTTokenizer(PreTrainedTokenizer):
             sequence(s).
         """
         sep = [self.sep_token_id]
-        cls = [self.cls_token_id]
+
         # no bos used in fairseq
         if token_ids_1 is None:
             return len(token_ids_0 + sep) * [0]
         return len(token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
-        # if token_ids_1 is None:
-        #     return len(cls + token_ids_0 + sep) * [0]
-        # return len(cls + token_ids_0 + sep) * [0] + len(token_ids_1 + sep) * [1]
 
     def save_vocabulary(self, save_directory):
         """
@@ -515,11 +462,15 @@ class FSMTTokenizer(PreTrainedTokenizer):
             logger.error("Vocabulary path ({}) should be a directory".format(save_directory))
             return
         src_vocab_file = os.path.join(save_directory, self.src_vocab_file)
+        tgt_vocab_file = os.path.join(save_directory, self.tgt_vocab_file)
         merges_file = os.path.join(save_directory, self.merges_file)
 
-        # XXX: do we need to save the tgt_vocab_file too?
         with open(src_vocab_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.encoder, ensure_ascii=False))
+
+        with open(src_vocab_file, "w", encoding="utf-8") as f:
+            tgt_vocab = {v: k for k, v in self.decoder.items()}
+            f.write(json.dumps(tgt_vocab, ensure_ascii=False))
 
         index = 0
         with open(merge_file, "w", encoding="utf-8") as writer:
