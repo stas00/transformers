@@ -54,7 +54,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "fsmt-wmt19-ru-en": { },
+    "fsmt-wmt19-ru-en": {"langs": ["ru", "en"], },
 }
 
 
@@ -69,24 +69,6 @@ def get_pairs(word):
         pairs.add((prev_char, char))
         prev_char = char
     return pairs
-
-# XXX: This tokenizer is a modified XLM tokenizer, so probably can remove more things that are irrelevant here
-
-def lowercase_and_remove_accent(text):
-    """
-    Lowercase and strips accents from a piece of text based on
-    https://github.com/facebookresearch/XLM/blob/master/tools/lowercase_and_remove_accent.py
-    """
-    text = " ".join(text)
-    text = text.lower()
-    text = unicodedata.normalize("NFD", text)
-    output = []
-    for char in text:
-        cat = unicodedata.category(char)
-        if cat == "Mn":
-            continue
-        output.append(char)
-    return "".join(output).lower().split(" ")
 
 
 def replace_unicode_punct(text):
@@ -150,9 +132,13 @@ class FSMTTokenizer(PreTrainedTokenizer):
     BPE tokenizer
 
     notes:
-    changed in defaults from xlm copy of this code
-    - do_lowercase_and_remove_accent=False,
-
+    removed
+    - vocab_file
+    - do_lowercase_and_remove_accent
+    added:
+    - src_vocab_file,
+    - tgt_vocab_file,
+    - langs,
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -162,6 +148,7 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def __init__(
         self,
+        langs,
         src_vocab_file,
         tgt_vocab_file,
         merges_file,
@@ -183,9 +170,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
             "<special8>",
             "<special9>",
         ],
-        lang2id=None,
-        id2lang=None,
-        do_lowercase_and_remove_accent=False,
         **kwargs
     ):
         super().__init__(
@@ -207,13 +191,11 @@ class FSMTTokenizer(PreTrainedTokenizer):
         self.cache_moses_punct_normalizer = dict()
         # cache of sm.MosesTokenizer instance
         self.cache_moses_tokenizer = dict()
-        self.lang_with_custom_tokenizer = set(["zh", "th", "ja"])
-        # True for current supported model (v1.2.0), False for FAIRSEQ_TRANSFORMER-17 & 100
-        self.do_lowercase_and_remove_accent = do_lowercase_and_remove_accent
-        self.lang2id = lang2id
-        self.id2lang = id2lang
-        if lang2id is not None and id2lang is not None:
-            assert len(lang2id) == len(id2lang)
+        self.cache_moses_detokenizer = dict()
+
+        if len(langs) != 2:
+            raise ValueError(f"langs arg needs to be a list of 2 langs, e.g. ['en', 'run'], but got f{langs}")
+        self.src_lang, self.tgt_lang = langs[0], langs[1]
 
         with open(src_vocab_file, encoding="utf-8") as src_vocab_handle:
             self.encoder = json.load(src_vocab_handle)
@@ -241,6 +223,14 @@ class FSMTTokenizer(PreTrainedTokenizer):
         else:
             moses_tokenizer = self.cache_moses_tokenizer[lang]
         return moses_tokenizer.tokenize(text, return_str=False, escape=False)
+
+    def moses_detokenize(self, tokens, lang):
+        if lang not in self.cache_moses_tokenizer:
+            moses_detokenizer = sm.MosesDetokenizer(lang=self.tgt_lang)
+            self.cache_moses_detokenizer[lang] = moses_detokenizer
+        else:
+            moses_detokenizer = self.cache_moses_detokenizer[lang]
+        return moses_detokenizer.detokenize(tokens)
 
     def moses_pipeline(self, text, lang):
         text = replace_unicode_punct(text)
@@ -327,14 +317,9 @@ class FSMTTokenizer(PreTrainedTokenizer):
             )
         if bypass_tokenizer:
             text = text.split()
-        elif lang not in self.lang_with_custom_tokenizer:
+        else:
             text = self.moses_pipeline(text, lang=lang)
             text = self.moses_tokenize(text, lang=lang)
-        else:
-            raise ValueError("It should not reach here")
-
-        if self.do_lowercase_and_remove_accent and not bypass_tokenizer:
-            text = lowercase_and_remove_accent(text)
 
         split_tokens = []
         for token in text:
@@ -353,7 +338,10 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def convert_tokens_to_string(self, tokens):
         """ Converts a sequence of tokens (string) in a single string. """
-        out_string = "".join(tokens).replace("</w>", " ").strip()
+        tokens = [t.replace("</w>", " ") for t in tokens]
+        text = self.moses_detokenize(tokens, self.tgt_lang)
+        return text
+        #out_string = "".join(tokens).replace("</w>", " ").strip()
         return out_string
 
     def build_inputs_with_special_tokens(
@@ -468,7 +456,7 @@ class FSMTTokenizer(PreTrainedTokenizer):
         with open(src_vocab_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.encoder, ensure_ascii=False))
 
-        with open(src_vocab_file, "w", encoding="utf-8") as f:
+        with open(tgt_vocab_file, "w", encoding="utf-8") as f:
             tgt_vocab = {v: k for k, v in self.decoder.items()}
             f.write(json.dumps(tgt_vocab, ensure_ascii=False))
 
@@ -484,4 +472,4 @@ class FSMTTokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
-        return src_vocab_file, merge_file
+        return src_vocab_file, tgt_vocab_file, merge_file

@@ -1566,6 +1566,23 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
 
+        # #
+        # # XXX: need the model name inside the sub-class, could pass as an arg to cls() instantiator
+        # if getattr(cls, "pretrained_language_pairs"):
+        #     try:
+        #         src_lang, tgt_lang = cls.pretrained_language_pairs[pretrained_model_name_or_path]
+        #     except:
+        #         raise ValueError(f"pretrained model {pretrained_model_name_or_path} needs to have a [src_lang, tgt_lang] pair defined in PRETRAINED_LANGUAGE_PAIRS")
+        # tokenizer.pretrained_model_name_or_path = pretrained_model_name_or_path
+        #      for file_id, map_list in cls.pretrained_vocab_files_map.items():
+        #         vocab_files[file_id] = map_list[pretrained_model_name_or_path]
+        #     if (
+        #         cls.pretrained_init_configuration
+        #         and pretrained_model_name_or_path in cls.pretrained_init_configuration
+        #     ):
+        #         init_configuration = cls.pretrained_init_configuration[pretrained_model_name_or_path].copy()
+        # else:
+
         # Instantiate tokenizer.
         try:
             tokenizer = cls(*init_inputs, **init_kwargs)
