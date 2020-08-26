@@ -527,6 +527,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
             return model_embeds
 
         # Update base model and current model config
+        # XXX: now we have src_vocab_size/tgt_vocab_size
         self.config.vocab_size = new_num_tokens
         base_model.vocab_size = new_num_tokens
 
@@ -934,11 +935,11 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
 
             # Some models may have keys that are not in the state by design, removing them before needlessly warning
             # the user.
-            print(cls.authorized_missing_keys)
+            # print(cls.authorized_missing_keys)
             if cls.authorized_missing_keys is not None:
                 for pat in cls.authorized_missing_keys:
                     missing_keys = [k for k in missing_keys if re.search(pat, k) is None]
-            print(missing_keys)
+            # print(missing_keys)
 
             if len(unexpected_keys) > 0:
                 logger.warning(

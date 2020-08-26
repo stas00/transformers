@@ -361,8 +361,8 @@ class GenerationMixin:
         if hasattr(self.config, "vocab_size"):
             vocab_size = self.config.vocab_size
         elif (self.config.is_encoder_decoder):
-            if hasattr(self.config, "decoder_emd_tok_dim"):
-                vocab_size = self.config.decoder_emd_tok_dim
+            if hasattr(self.config, "tgt_vocab_size"):
+                vocab_size = self.config.tgt_vocab_size
             elif (
                     hasattr(self.config, "decoder")
                     and hasattr(self.config.decoder, "vocab_size")

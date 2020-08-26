@@ -55,7 +55,7 @@ _TOKENIZER_FOR_DOC = "FSMTTokenizer"
 
 
 FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/"
+    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/"
     # See all XXX models at https://huggingface.co/models?filter=XXX
 ]
 
@@ -294,8 +294,8 @@ class FSMTEncoder(nn.Module):
 
         self.embed_tokens = embed_tokens
         if config.static_position_embeddings:
-            print(config.max_position_embeddings, embed_dim, self.padding_idx)
-            num_embeddings = config.encoder_emd_tok_dim
+            #print(config.max_position_embeddings, embed_dim, self.padding_idx)
+            num_embeddings = config.src_vocab_size
             self.embed_positions = SinusoidalPositionalEmbedding(
                 embed_dim, self.padding_idx, init_size=num_embeddings + self.padding_idx + 1 # removed: config.max_position_embeddings
 
@@ -478,7 +478,7 @@ class FSMTDecoder(nn.Module):
         self.embed_tokens = embed_tokens
         embed_dim = embed_tokens.embedding_dim
         if config.static_position_embeddings:
-            num_embeddings = config.decoder_emd_tok_dim
+            num_embeddings = config.tgt_vocab_size
             # XXX: self.padding_idx and config.pad_token_id are the same?
             self.embed_positions = SinusoidalPositionalEmbedding(
                 embed_dim, self.padding_idx, init_size=num_embeddings + self.padding_idx + 1 # removed: config.max_position_embeddings
@@ -836,11 +836,11 @@ class FSMTModel(PreTrainedFSMTModel):
 
         padding_idx = config.pad_token_id
         # XXX: replace config.d_model with enc and dec size? but it's the same at the moment
-        self.encoder_embed_tokens = nn.Embedding(config.encoder_emd_tok_dim, config.d_model, padding_idx)
-        self.decoder_embed_tokens = nn.Embedding(config.decoder_emd_tok_dim, config.d_model, padding_idx)
+        encoder_embed_tokens = nn.Embedding(config.src_vocab_size, config.d_model, padding_idx)
+        decoder_embed_tokens = nn.Embedding(config.tgt_vocab_size, config.d_model, padding_idx)
 
-        self.encoder = FSMTEncoder(config, self.encoder_embed_tokens)
-        self.decoder = FSMTDecoder(config, self.decoder_embed_tokens)
+        self.encoder = FSMTEncoder(config, encoder_embed_tokens)
+        self.decoder = FSMTDecoder(config, decoder_embed_tokens)
 
         self.init_weights()
 
@@ -883,7 +883,7 @@ class FSMTModel(PreTrainedFSMTModel):
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
                 decoder_padding_mask=decoder_attention_mask,
-                causal_mask_dtype=self.decoder_embed_tokens.weight.dtype,
+                causal_mask_dtype=self.decoder.embed_tokens.weight.dtype,
             )
         else:
             decoder_padding_mask, causal_mask = None, None
@@ -938,21 +938,22 @@ class FSMTModel(PreTrainedFSMTModel):
         )
 
     # override the parent's method - we have different encoder/decoder emb weights
+    # XXX: rebase and remove this
     def tie_weights(self): pass
 
     def get_input_embeddings(self):
-        return self.encoder_embed_tokens
+        return self.encoder.embed_tokens
 
     def set_input_embeddings(self, value):
-        self.encoder.embed_tokens = self.encoder_embed_tokens = value
+        self.encoder.embed_tokens = value # self.encoder_embed_tokens = value
 
     def get_output_embeddings(self):
-        return self.decoder_embed_tokens
+        return self.decoder.embed_tokens
         # XXX: it was, but probably not needed here
-        return _make_linear_from_emb(self.decoder_embed_tokens)  # make it on the fly
+        #return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
 
     def set_output_embeddings(self, value):
-        self.decoder.embed_tokens = self.decoder_embed_tokens = value
+        self.decoder.embed_tokens = value # self.decoder_embed_tokens = value
 
 
 
@@ -969,14 +970,14 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
         self.model = base_model
         # XXX: not in the original - do we need to remove it? or just use a bias of zeros?
         # should the number of embeddings be of enc or dec? probably dec, as it's out?
-        self.register_buffer("final_logits_bias", torch.zeros((1, self.model.decoder_embed_tokens.num_embeddings)))
+        self.register_buffer("final_logits_bias", torch.zeros((1, self.model.decoder.embed_tokens.num_embeddings)))
 
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
         # XXX: changed .shared to .encoder_embed_tokens - what about decoder?
         # This function is most likely broken!
-        old_num_tokens = self.model.encoder_embed_tokens.num_embeddings
+        old_num_tokens = self.model.encoder.embed_tokens.num_embeddings
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
-        self.model.encoder_embed_tokens = new_embeddings
+        self.model.encoder.embed_tokens = new_embeddings
         self._resize_final_logits_bias(new_num_tokens, old_num_tokens)
         return new_embeddings
 
@@ -1063,14 +1064,14 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
             return_dict=return_dict,
         )
         # XXX: changed .shared to .decoder_embed_tokens
-        #lm_logits = F.linear(outputs[0], self.model.decoder_embed_tokens.weight, bias=self.final_logits_bias.squeeze())
+        #lm_logits = F.linear(outputs[0], self.model.decoder.embed_tokens.weight, bias=self.final_logits_bias.squeeze())
         lm_logits = outputs[0]
 
         masked_lm_loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             # TODO(SS): do we need to ignore pad tokens in labels?
-            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.tgt_vocab_size), labels.view(-1))
 
         if not return_dict:
             output = (lm_logits,) + outputs[1:]
@@ -1112,7 +1113,7 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
         if isinstance(token_ids, int):
             token_ids = [token_ids]
         all_but_token_ids_mask = torch.tensor(
-            [x for x in range(self.config.vocab_size) if x not in token_ids],
+            [x for x in range(self.config.src_vocab_size) if x not in token_ids],
             dtype=torch.long,
             device=next(self.parameters()).device,
         )
@@ -1142,7 +1143,7 @@ class FSMTForConditionalGeneration(PreTrainedFSMTModel):
     def get_output_embeddings(self):
         return self.model.decoder.embed_tokens
         # XXX: it was, but probably not needed here
-        # return _make_linear_from_emb(self.decoder_embed_tokens)  # make it on the fly
+        # return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
 
 
 import math
@@ -1213,8 +1214,9 @@ class SinusoidalPositionalEmbedding(nn.Module):
         positions: Optional[Any] = None,
     ):
         """Input is expected to be of size [bsz x seqlen]."""
-        bspair = torch.onnx.operators.shape_as_tensor(input)
-        bsz, seq_len = bspair[0], bspair[1]
+        #bspair = torch.onnx.operators.shape_as_tensor(input)
+        #bsz, seq_len = bspair[0], bspair[1]
+        bsz, seq_len = input.shape[:2]
         max_pos = self.padding_idx + 1 + seq_len
         if self.weights is None or max_pos > self.weights.size(0):
             # recompute/expand embeddings if needed

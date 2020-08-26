@@ -15,99 +15,59 @@ def dump_state_keys(state_dict): print("\n".join(state_dict.keys()))
 
 # # Baseline
 
-from fairseq import hub_utils
-#checkpoint_file = 'model1.pt:model2.pt:model3.pt:model4.pt'
-checkpoint_file = 'model1.pt'
-model_name_or_path = 'transformer.wmt19.ru-en'
-data_name_or_path = '.'
-cls = fairseq.model_parallel.models.transformer.ModelParallelTransformerModel
-models = cls.hub_models()
-kwargs = {'bpe': 'fastbpe', 'tokenizer': 'moses'}
-
-ru2en = hub_utils.from_pretrained(
-            model_name_or_path,
-            checkpoint_file,
-            data_name_or_path,
-            archive_map=models,
-            **kwargs
-        )
-
-
-# In[7]:
-
-
 #checkpoint_file='model1.pt:model2.pt:model3.pt:model4.pt'
-# path = "/code/huggingface/transformers-fair-wmt"
-# mname = 'transformer.wmt19.ru-en'
-# chkpt1_path = path + "/data/wmt19.ru-en.ensemble/model4.pt"
-# checkpoint_file='model1.pt'
-
-# chkpt = torch.load(chkpt1_path, map_location="cpu")
+checkpoint_file='model1.pt'
+ru2en = torch.hub.load('pytorch/fairseq', 'transformer.wmt19.ru-en', checkpoint_file=checkpoint_file, tokenizer='moses', bpe='fastbpe')
 
 
-# validate that the model keys are correct:
-#hub_interface = torch.hub.load("pytorch/fairseq", mname, checkpoint_file).eval()
-#hub_interface.models[0].load_state_dict(chkpt["model"])
-#chkpt = hub_interface
+# from fairseq import hub_utils
+# #checkpoint_file = 'model1.pt:model2.pt:model3.pt:model4.pt'
+# checkpoint_file = 'model1.pt'
+# model_name_or_path = 'transformer.wmt19.ru-en'
+# data_name_or_path = '.'
+# cls = fairseq.model_parallel.models.transformer.ModelParallelTransformerModel
+# models = cls.hub_models()
+# kwargs = {'bpe': 'fastbpe', 'tokenizer': 'moses'}
 
-# this works just as well, but the above validates that the local copy loads correctly
-# chkpt = torch.load(chkpt1_path, map_location="cpu")
+# ru2en = hub_utils.from_pretrained(
+#             model_name_or_path,
+#             checkpoint_file,
+#             data_name_or_path,
+#             archive_map=models,
+#             **kwargs
+#         )
 
 
-# In[8]:
 
-
-#chkpt.models[0].upgrade_state_dict(chkpt.models[0].state_dict())
-
-
-# In[9]:
-
-
-model = ru2en["models"][0]
+model = ru2en.models[0]
 model
 
 
-# In[10]:
 
+args = dict(vars(ru2en.args))
 
-args = dict(vars(ru2en["args"]))
-
-
-# In[11]:
 
 
 args["source_lang"]
 args["encoder_embed_dim"]
 args["decoder_embed_dim"]
 
-
-# In[12]:
-
-
 pprint(args)
 
-
-# In[13]:
 
 
 pprint(args.keys())
 
-
-# In[14]:
 
 
 model_state_dict = model.state_dict()
 #model_state_dict
 
 
-# In[15]:
-
 
 #model = dict(vars(model))
-dump_state_keys(model_state_dict)
+#dump_state_keys(model_state_dict)
 
-
-# In[16]:
 
 
 #model.items()
@@ -115,26 +75,9 @@ model_state_dict["decoder.layers.5.fc2.bias"].shape.numel()
 model_state_dict["decoder.layers.5.fc2.bias"].shape[0]
 
 
-# In[17]:
-
-
-#list(model.parameters())
-
-
-# In[18]:
-
 
 # dump the state_dict attrs and their shape
-pprint([f"{' '.join(map(str, v.shape)):>12} {k}"for k,v in model_state_dict.items()])
-
-
-# In[ ]:
-
-
-
-
-
-# In[19]:
+#pprint([f"{' '.join(map(str, v.shape)):>12} {k}"for k,v in model_state_dict.items()])
 
 
 # renames/removal
@@ -146,7 +89,7 @@ rename_keys = [
 #    ("", ""),
 #    ("", ""),
 #    ("", ""),
-#    ("", ""),    
+#    ("", ""),
 ]
 
 def remove_ignore_keys_(model_state_dict):
@@ -154,6 +97,8 @@ def remove_ignore_keys_(model_state_dict):
         "model.model",
         "model.encoder.version",
         "model.decoder.version",
+        "model.encoder_embed_tokens.weight",
+        "model.decoder_embed_tokens.weight",
 #        "model.encoder.embed_positions._float_tensor", # not storing model.encoder.embed_positions.weight
 #        "model.decoder.embed_positions._float_tensor", # not storing model.decoder.embed_positions.weight
     ]
@@ -171,60 +116,24 @@ model_state_dict_new = OrderedDict(("model."+k, v) for k, v in model_state_dict.
 # check:
 #model_state_dict["model.encoder.layers.0.fc1.bias"]
 #chkpt["model"]["encoder.layers.0.fc1.bias"]
-    
+
 remove_ignore_keys_(model_state_dict_new)
 for src, dest in rename_keys:
     rename_key(model_state_dict_new, src, dest)
-    
-
-
-# In[20]:
-
 
 model_state_dict_new["model.decoder.embed_tokens.weight"].shape
 
+# XXX: emulate non-existing layer - perhaps it'll be removed instead in the model - for now just a bias of 0's
+model_state_dict_new["final_logits_bias"] = torch.zeros((1, model_state_dict_new["model.decoder.embed_tokens.weight"].shape[0]))
 
-# In[21]:
-
-
-# emulate non-existing layer - perhaps it'll be removed instead in the model - for now just a bias of 0's
-model_state_dict_new["final_logits_bias"] = torch.zeros((1, model_state_dict_new["model.decoder.embed_tokens.weight"].shape[0])) 
-                                                        
 model_state_dict_new["final_logits_bias"].shape
-
-
-# In[22]:
-
-
-#pprint(state_dict.keys())
-#state_dict["model.encoder.layers.0.fc1.bias"]
-#state_dict["model.encoder.embed_positions.weight"]
-#torch.FloatTensor(1)
-
-
-# # This is it
-
-# In[42]:
 
 
 from transformers.modeling_fsmt import FSMTForConditionalGeneration
 from transformers.configuration_fsmt import FSMTConfig
 
-
-# In[43]:
-
-
-hf_checkpoint_name = "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/config.json"
-config = FSMTConfig.from_pretrained(hf_checkpoint_name)
-model_new = FSMTForConditionalGeneration(config).eval()
-#state_dict = chkpt["model"]
-
-
-# In[44]:
-
-
 #dump_state_keys(model_state_dict_new)
-model_state_dict_new["model.decoder.embed_tokens.weight"].shape
+#model_state_dict_new["model.decoder.embed_tokens.weight"].shape
 
 
 
@@ -240,24 +149,48 @@ model_state_dict_new["model.decoder.embed_tokens.weight"].shape
 # "model.encoder_embed_tokens.weight",
 # "model.decoder_embed_tokens.weight",
 
-# encoder_emd_tok_dim
-args["encoder_emd_tok_dim"] = 31232
-args["decoder_emd_tok_dim"] = 31640
+# # encoder_emd_tok_dim
+# args["src_vocab_size"] = 31232
+# args["tgt_vocab_size"] = 31640
+#
+# model_state_dict_new["model.encoder_embed_tokens.weight"] = torch.zeros((args["src_vocab_size"], args["encoder_embed_dim"]))
+#
+# model_state_dict_new["model.decoder_embed_tokens.weight"] = torch.zeros((args["tgt_vocab_size"], args["decoder_embed_dim"]))
+#
+# model_state_dict_new["model.encoder_embed_tokens.weight"].shape
+# model_state_dict_new["model.decoder_embed_tokens.weight"].shape
 
-model_state_dict_new["model.encoder_embed_tokens.weight"] = torch.zeros((args["encoder_emd_tok_dim"], args["encoder_embed_dim"]))
 
-model_state_dict_new["model.decoder_embed_tokens.weight"] = torch.zeros((args["decoder_emd_tok_dim"], args["decoder_embed_dim"]))
+hf_checkpoint_name = "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/config.json"
+config = FSMTConfig.from_pretrained(hf_checkpoint_name)
+model_new = FSMTForConditionalGeneration(config).eval()
+#state_dict = chkpt["model"]
 
-model_state_dict_new["model.encoder_embed_tokens.weight"].shape
-model_state_dict_new["model.decoder_embed_tokens.weight"].shape
+import torch
+def compare_state_dicts(d1, d2, cmp_func=torch.equal):
+    ok = 1
+    for k in sorted( set(d1.keys()) | set(d2.keys()) ):
+        if k in d1 and k in d2:
+            if cmp_func(d1[k], d2[k]):
+                pass
+            else:
+                ok = 0
+                print(f"Key {k}: values mismatch: \n{d1[k]}\n{d2[k]}\n")
+        else:
+            ok = 0
+            which = "1st" if k in d2 else "2nd"
+            print(f"{which} dict doesn't have key {k}\n")
+    if ok:
+        print('Models match')
+#compare_state_dicts(model_new.state_dict(), model_state_dict_new)
 
-
-# In[46]:
-
+torch.save(model_state_dict_new, "/tmp/new.pt")
 
 # show missing or extraneous/mismatching keys (need to remap/change model to match)
+# XXX: somehow this is the key for making the model work
+# if I remove this - it stops working
+# FSMTForConditionalGeneration probably loads some garbage
 model_new.load_state_dict(model_state_dict_new)
-
 
 model_new
 
@@ -271,8 +204,9 @@ sentence = "Машинное обучение - это здорово! Ты мо
 
 input_ids = tokenizer.encode(sentence, return_tensors='pt')
 print(input_ids)
-outputs = model_new.generate(input_ids)
+outputs = model_new.generate(input_ids)#, num_beams=5)
+print("Outputs")
 print(outputs)
-decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-print(decoded)
-
+for output in outputs:
+    decoded = tokenizer.decode(output, skip_special_tokens=True)
+    print(decoded)

@@ -38,13 +38,13 @@ VOCAB_FILES_NAMES = {
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "src_vocab_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-ru.json",
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-ru.json",
     },
     "tgt_vocab_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/vocab-en.json",
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-en.json",
     },
     "merges_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/merges.txt"
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/merges.txt"
     },
 
 }
@@ -148,10 +148,10 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def __init__(
         self,
-        langs,
-        src_vocab_file,
-        tgt_vocab_file,
-        merges_file,
+        langs=None,
+        src_vocab_file=None,
+        tgt_vocab_file=None,
+        merges_file=None,
         unk_token="<unk>",
         bos_token="<s>",
         sep_token="</s>",
@@ -311,10 +311,11 @@ class FSMTTokenizer(PreTrainedTokenizer):
         Returns:
             List of tokens.
         """
-        if lang and self.lang2id and lang not in self.lang2id:
-            logger.error(
-                "Supplied language code not found in lang2id mapping. Please check that your language is supported by the loaded pretrained model."
-            )
+        # ignore `lang` which is currently isn't explicitly passed in tokenization_utils.py and always results in lang=en
+        # if lang != self.src_lang:
+        #     raise ValueError(f"Expected lang={self.src_lang}, but got {lang}")
+        lang = self.src_lang
+
         if bypass_tokenizer:
             text = text.split()
         else:

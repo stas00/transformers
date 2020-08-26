@@ -22,7 +22,7 @@ from .configuration_utils import PretrainedConfig
 logger = logging.getLogger(__name__)
 
 FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-     "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/wmt19-ru-en/config.json",
+     "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/config.json",
 }
 
 # XXX: this one is modeled after BartConfig
@@ -39,37 +39,44 @@ class FSMTConfig(PretrainedConfig):
     # update the defaults from config file
     def __init__(
         self,
-        activation_dropout=0.0,
-        extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
+        src_vocab_size, # new
+        tgt_vocab_size, # new
+        langs, #new
+
         activation_function="relu",  # changed
-        # vocab_size=50265, replaced by encoder_emd_tok_dim/decoder_emd_tok_dim
+        num_labels=3,
         d_model=1024,
+        max_position_embeddings=1024,
+        extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
+
         encoder_ffn_dim=4096,
         encoder_layers=12,
         encoder_attention_heads=16,
-        encoder_emd_tok_dim=0, # new / src vocab_size
+        encoder_layerdrop=0.0,
+
         decoder_ffn_dim=4096,
         decoder_layers=12,
         decoder_attention_heads=16,
-        encoder_layerdrop=0.0,
         decoder_layerdrop=0.0,
-        decoder_emd_tok_dim=0, # new / tgt vocab_size
+
         attention_dropout=0.0,
         dropout=0.1,
-        max_position_embeddings=1024,
+        activation_dropout=0.0,
         init_std=0.02,
         classifier_dropout=0.0,
-        num_labels=3,
-        is_encoder_decoder=True,
+
         pad_token_id=1,
         bos_token_id=0,
         eos_token_id=2,
-        normalize_before=False,
-        add_final_layer_norm=False,
-        scale_embedding=False,
-        normalize_embedding=False,
-        static_position_embeddings=True,
+
         add_bias_logits=False,
+        add_final_layer_norm=False,
+        is_encoder_decoder=True,
+        normalize_before=False,
+        normalize_embedding=False,
+        scale_embedding=True,
+        static_position_embeddings=True,
+
         **common_kwargs
     ):
         r"""
@@ -93,8 +100,8 @@ class FSMTConfig(PretrainedConfig):
             is_encoder_decoder=is_encoder_decoder,
             **common_kwargs,
         )
-        self.encoder_emd_tok_dim = encoder_emd_tok_dim
-        self.decoder_emd_tok_dim = decoder_emd_tok_dim
+        self.src_vocab_size = src_vocab_size
+        self.tgt_vocab_size = tgt_vocab_size
         self.d_model = d_model  # encoder_embed_dim and decoder_embed_dim
         self.encoder_ffn_dim = encoder_ffn_dim
         self.encoder_layers = self.num_hidden_layers = encoder_layers
@@ -126,9 +133,6 @@ class FSMTConfig(PretrainedConfig):
         self.attention_dropout = attention_dropout
         self.activation_dropout = activation_dropout
         self.dropout = dropout
-
-        # Classifier stuff
-        self.classif_dropout = classifier_dropout
 
         # pos embedding offset
         self.extra_pos_embeddings = self.pad_token_id + 1
