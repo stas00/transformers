@@ -76,6 +76,7 @@ class FSMTConfig(PretrainedConfig):
         normalize_embedding=False,
         scale_embedding=True,
         static_position_embeddings=True,
+        tie_word_embeddings=False,
 
         **common_kwargs
     ):
@@ -98,6 +99,7 @@ class FSMTConfig(PretrainedConfig):
             bos_token_id=bos_token_id,
             eos_token_id=eos_token_id,
             is_encoder_decoder=is_encoder_decoder,
+            tie_word_embeddings=tie_word_embeddings,
             **common_kwargs,
         )
         self.src_vocab_size = src_vocab_size

@@ -182,6 +182,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         "normalize_embedding": False,
         "scale_embedding": True,
         "static_position_embeddings": True,
+        "tie_word_embeddings": False,
     }
 
     print(f"Generating {fairseq_config_file}")
