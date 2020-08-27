@@ -56,6 +56,9 @@ _TOKENIZER_FOR_DOC = "FSMTTokenizer"
 
 FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/"
+    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/"
+    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/"
+    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/"
     # See all XXX models at https://huggingface.co/models?filter=XXX
 ]
 
@@ -936,10 +939,6 @@ class FSMTModel(PreTrainedFSMTModel):
             encoder_hidden_states=encoder_outputs.hidden_states,
             encoder_attentions=encoder_outputs.attentions,
         )
-
-    # override the parent's method - we have different encoder/decoder emb weights
-    # XXX: rebase and remove this
-    def tie_weights(self): pass
 
     def get_input_embeddings(self):
         return self.encoder.embed_tokens

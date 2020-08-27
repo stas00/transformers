@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
      "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/config.json",
+     "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/config.json",
+     "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/config.json",
+     "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/config.json",
 }
 
 # XXX: this one is modeled after BartConfig

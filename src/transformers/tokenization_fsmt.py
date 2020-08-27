@@ -39,22 +39,37 @@ VOCAB_FILES_NAMES = {
 PRETRAINED_VOCAB_FILES_MAP = {
     "src_vocab_file": {
         "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-ru.json",
+        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/vocab-en.json",
+        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/vocab-de.json",
+        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/vocab-en.json",
     },
     "tgt_vocab_file": {
         "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-en.json",
+        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/vocab-ru.json",
+        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/vocab-en.json",
+        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/vocab-de.json",
     },
     "merges_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/merges.txt"
+        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/merges.txt",
+        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/merges.txt",
+        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/merges.txt",
+        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/merges.txt",
     },
 
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "fsmt-wmt19-ru-en": 1024,
+    "fsmt-wmt19-en-ru": 1024,
+    "fsmt-wmt19-de-en": 1024,
+    "fsmt-wmt19-en-de": 1024,
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
     "fsmt-wmt19-ru-en": {"langs": ["ru", "en"], },
+    "fsmt-wmt19-en-ru": {"langs": ["en", "ru"], },
+    "fsmt-wmt19-de-en": {"langs": ["de", "en"], },
+    "fsmt-wmt19-en-de": {"langs": ["en", "de"], },
 }
 
 
@@ -194,7 +209,7 @@ class FSMTTokenizer(PreTrainedTokenizer):
         self.cache_moses_detokenizer = dict()
 
         if len(langs) != 2:
-            raise ValueError(f"langs arg needs to be a list of 2 langs, e.g. ['en', 'run'], but got f{langs}")
+            raise ValueError(f"langs arg needs to be a list of 2 langs, e.g. ['en', 'ru'], but got f{langs}")
         self.src_lang, self.tgt_lang = langs[0], langs[1]
 
         with open(src_vocab_file, encoding="utf-8") as src_vocab_handle:
@@ -339,11 +354,14 @@ class FSMTTokenizer(PreTrainedTokenizer):
 
     def convert_tokens_to_string(self, tokens):
         """ Converts a sequence of tokens (string) in a single string. """
-        tokens = [t.replace("</w>", " ") for t in tokens]
+
+        # remove BPE
+        tokens = [t.replace(" ", "").replace("</w>", " ") for t in tokens]
+        tokens = "".join(tokens).split()
+        # detokenize
         text = self.moses_detokenize(tokens, self.tgt_lang)
         return text
-        #out_string = "".join(tokens).replace("</w>", " ").strip()
-        return out_string
+
 
     def build_inputs_with_special_tokens(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
