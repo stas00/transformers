@@ -17,6 +17,8 @@
 # exec:
 # cd /code/huggingface/transformers-fair-wmt
 # PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.ru-en.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-ru-en
+# transformers-cli upload data/fsmt-wmt19-ru-en;
+# etc
 
 import argparse
 import json

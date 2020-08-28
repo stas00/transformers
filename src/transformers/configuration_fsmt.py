@@ -22,10 +22,10 @@ from .configuration_utils import PretrainedConfig
 logger = logging.getLogger(__name__)
 
 FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-     "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/config.json",
-     "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/config.json",
-     "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/config.json",
-     "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/config.json",
+     "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/config.json",
+     "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/config.json",
+     "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/config.json",
+     "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/config.json",
 }
 
 # XXX: this one is modeled after BartConfig

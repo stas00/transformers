@@ -55,16 +55,15 @@ _TOKENIZER_FOR_DOC = "FSMTTokenizer"
 
 
 FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/"
-    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/"
-    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/"
-    "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/"
-    # See all XXX models at https://huggingface.co/models?filter=XXX
+    "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/"
+    "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/"
+    "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/"
+    "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/"
 ]
 
 
 
-# See all FSMT models at https://huggingface.co/models?search=XXX
+# See all FSMT models at https://huggingface.co/models?search=fsmt
 
 
 FSMT_START_DOCSTRING = r"""
@@ -141,7 +140,7 @@ def invert_mask(attention_mask):
     return attention_mask.eq(0)
 
 
-def _prepare_fairseqtranslator_decoder_inputs(
+def _prepare_fsmt_decoder_inputs(
     config, input_ids, decoder_input_ids=None, decoder_padding_mask=None, causal_mask_dtype=torch.float32
 ):
     """Prepare masks that ignore padding tokens in the decoder and a causal mask for the decoder if
@@ -838,7 +837,6 @@ class FSMTModel(PreTrainedFSMTModel):
         super().__init__(config)
 
         padding_idx = config.pad_token_id
-        # XXX: replace config.d_model with enc and dec size? but it's the same at the moment
         encoder_embed_tokens = nn.Embedding(config.src_vocab_size, config.d_model, padding_idx)
         decoder_embed_tokens = nn.Embedding(config.tgt_vocab_size, config.d_model, padding_idx)
 
@@ -881,7 +879,7 @@ class FSMTModel(PreTrainedFSMTModel):
 
         # make masks if user doesn't supply
         if not use_cache:
-            decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_fairseqtranslator_decoder_inputs(
+            decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_fsmt_decoder_inputs(
                 self.config,
                 input_ids,
                 decoder_input_ids=decoder_input_ids,

@@ -38,38 +38,38 @@ VOCAB_FILES_NAMES = {
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "src_vocab_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-ru.json",
-        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/vocab-en.json",
-        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/vocab-de.json",
-        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/vocab-en.json",
+        "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/vocab-ru.json",
+        "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/vocab-en.json",
+        "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/vocab-de.json",
+        "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/vocab-en.json",
     },
     "tgt_vocab_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/vocab-en.json",
-        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/vocab-ru.json",
-        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/vocab-en.json",
-        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/vocab-de.json",
+        "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/vocab-en.json",
+        "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/vocab-ru.json",
+        "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/vocab-en.json",
+        "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/vocab-de.json",
     },
     "merges_file": {
-        "fsmt-wmt19-ru-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-ru-en/merges.txt",
-        "fsmt-wmt19-en-ru": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-ru/merges.txt",
-        "fsmt-wmt19-de-en": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-de-en/merges.txt",
-        "fsmt-wmt19-en-de": "/code/huggingface/transformers-fair-wmt/data/fsmt-wmt19-en-de/merges.txt",
+        "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/merges.txt",
+        "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/merges.txt",
+        "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/merges.txt",
+        "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/merges.txt",
     },
 
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "fsmt-wmt19-ru-en": 1024,
-    "fsmt-wmt19-en-ru": 1024,
-    "fsmt-wmt19-de-en": 1024,
-    "fsmt-wmt19-en-de": 1024,
+    "stas/fsmt-wmt19-ru-en": 1024,
+    "stas/fsmt-wmt19-en-ru": 1024,
+    "stas/fsmt-wmt19-de-en": 1024,
+    "stas/fsmt-wmt19-en-de": 1024,
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "fsmt-wmt19-ru-en": {"langs": ["ru", "en"], },
-    "fsmt-wmt19-en-ru": {"langs": ["en", "ru"], },
-    "fsmt-wmt19-de-en": {"langs": ["de", "en"], },
-    "fsmt-wmt19-en-de": {"langs": ["en", "de"], },
+    "stas/fsmt-wmt19-ru-en": { "langs": ["ru", "en"], },
+    "stas/fsmt-wmt19-en-ru": { "langs": ["en", "ru"], },
+    "stas/fsmt-wmt19-de-en": { "langs": ["de", "en"], },
+    "stas/fsmt-wmt19-en-de": { "langs": ["en", "de"], },
 }
 
 
