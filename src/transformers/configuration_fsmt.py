@@ -19,13 +19,14 @@ import logging
 
 from .configuration_utils import PretrainedConfig
 
+
 logger = logging.getLogger(__name__)
 
 FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-     "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/config.json",
-     "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/config.json",
-     "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/config.json",
-     "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/config.json",
+    "stas/fsmt-wmt19-ru-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-ru-en/config.json",
+    "stas/fsmt-wmt19-en-ru": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-ru/config.json",
+    "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/config.json",
+    "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/config.json",
 }
 
 # XXX: this one is modeled after BartConfig
@@ -42,36 +43,30 @@ class FSMTConfig(PretrainedConfig):
     # update the defaults from config file
     def __init__(
         self,
-        src_vocab_size, # new
-        tgt_vocab_size, # new
-        langs, #new
-
+        src_vocab_size,  # new
+        tgt_vocab_size,  # new
+        langs,  # new
         activation_function="relu",  # changed
         num_labels=3,
         d_model=1024,
         max_position_embeddings=1024,
         extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
-
         encoder_ffn_dim=4096,
         encoder_layers=12,
         encoder_attention_heads=16,
         encoder_layerdrop=0.0,
-
         decoder_ffn_dim=4096,
         decoder_layers=12,
         decoder_attention_heads=16,
         decoder_layerdrop=0.0,
-
         attention_dropout=0.0,
         dropout=0.1,
         activation_dropout=0.0,
         init_std=0.02,
         classifier_dropout=0.0,
-
         pad_token_id=1,
         bos_token_id=0,
         eos_token_id=2,
-
         add_bias_logits=False,
         add_final_layer_norm=False,
         is_encoder_decoder=True,
@@ -80,18 +75,17 @@ class FSMTConfig(PretrainedConfig):
         scale_embedding=True,
         static_position_embeddings=True,
         tie_word_embeddings=False,
-
         **common_kwargs
     ):
         r"""
-            :class:`~transformers.BartConfig` is the configuration class for `BartModel`.
+        :class:`~transformers.BartConfig` is the configuration class for `BartModel`.
 
-            Examples::
+        Examples::
 
-                >>> from transformers import BartConfig, BartModel
+            >>> from transformers import BartConfig, BartModel
 
-                >>> config = BartConfig.from_pretrained('facebook/bart-large')
-                >>> model = BartModel(config)
+            >>> config = BartConfig.from_pretrained('facebook/bart-large')
+            >>> model = BartModel(config)
 
         """
         if "hidden_size" in common_kwargs:

@@ -368,13 +368,10 @@ class GenerationMixin:
         # current position and vocab size
         if hasattr(self.config, "vocab_size"):
             vocab_size = self.config.vocab_size
-        elif (self.config.is_encoder_decoder):
+        elif self.config.is_encoder_decoder:
             if hasattr(self.config, "tgt_vocab_size"):
                 vocab_size = self.config.tgt_vocab_size
-            elif (
-                    hasattr(self.config, "decoder")
-                    and hasattr(self.config.decoder, "vocab_size")
-            ):
+            elif hasattr(self.config, "decoder") and hasattr(self.config.decoder, "vocab_size"):
                 vocab_size = self.config.decoder.vocab_size
         if vocab_size is None:
             raise ValueError("vocab_size has to be defined")

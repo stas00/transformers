@@ -18,10 +18,11 @@ import json
 import os
 import unittest
 
-from transformers.testing_utils import slow, TestCasePlus
+from transformers.testing_utils import TestCasePlus, slow
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
 
 from .test_tokenization_common import TokenizerCommonTester
+
 
 class FSMTTokenizationTest(TokenizerCommonTester):
 
@@ -60,7 +61,9 @@ class FSMTTokenizationTest(TokenizerCommonTester):
         merges = ["l o 123", "lo w 1456", "e r</w> 1789", ""]
 
         self.langs = ["en", "ru"]
-        config = { 'langs': self.langs, }
+        config = {
+            "langs": self.langs,
+        }
 
         self.src_vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["src_vocab_file"])
         self.tgt_vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["tgt_vocab_file"])
@@ -75,7 +78,6 @@ class FSMTTokenizationTest(TokenizerCommonTester):
             fp.write("\n".join(merges))
         with open(config_file, "w") as fp:
             fp.write(json.dumps(config))
-
 
     def get_input_output_texts(self, tokenizer):
         input_text = "lower newer"

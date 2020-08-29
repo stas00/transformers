@@ -28,6 +28,7 @@ from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 
 from .activations import ACT2FN
+from .configuration_fsmt import FSMTConfig
 from .file_utils import (
     add_code_sample_docstrings,
     add_end_docstrings,
@@ -43,8 +44,6 @@ from .modeling_outputs import (
     Seq2SeqQuestionAnsweringModelOutput,
     Seq2SeqSequenceClassifierOutput,
 )
-
-from .configuration_fsmt import FSMTConfig
 from .modeling_utils import PreTrainedModel
 
 
@@ -60,7 +59,6 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/"
     "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/"
 ]
-
 
 
 # See all FSMT models at https://huggingface.co/models?search=fsmt
@@ -227,7 +225,9 @@ class EncoderLayer(nn.Module):
         super().__init__()
         self.embed_dim = config.d_model
         self.self_attn = SelfAttention(
-            self.embed_dim, config.encoder_attention_heads, dropout=config.attention_dropout,
+            self.embed_dim,
+            config.encoder_attention_heads,
+            dropout=config.attention_dropout,
         )
         self.normalize_before = config.normalize_before
         self.self_attn_layer_norm = LayerNorm(self.embed_dim)
@@ -296,15 +296,19 @@ class FSMTEncoder(nn.Module):
 
         self.embed_tokens = embed_tokens
         if config.static_position_embeddings:
-            #print(config.max_position_embeddings, embed_dim, self.padding_idx)
+            # print(config.max_position_embeddings, embed_dim, self.padding_idx)
             num_embeddings = config.src_vocab_size
             self.embed_positions = SinusoidalPositionalEmbedding(
-                embed_dim, self.padding_idx, init_size=num_embeddings + self.padding_idx + 1 # removed: config.max_position_embeddings
-
+                embed_dim,
+                self.padding_idx,
+                init_size=num_embeddings + self.padding_idx + 1,  # removed: config.max_position_embeddings
             )
         else:
             self.embed_positions = LearnedPositionalEmbedding(
-                config.max_position_embeddings, embed_dim, self.padding_idx, config.extra_pos_embeddings,
+                config.max_position_embeddings,
+                embed_dim,
+                self.padding_idx,
+                config.extra_pos_embeddings,
             )
         self.layers = nn.ModuleList([EncoderLayer(config) for _ in range(config.encoder_layers)])
         self.layernorm_embedding = LayerNorm(embed_dim) if config.normalize_embedding else nn.Identity()
@@ -377,7 +381,9 @@ class DecoderLayer(nn.Module):
         super().__init__()
         self.embed_dim = config.d_model
         self.self_attn = SelfAttention(
-            embed_dim=self.embed_dim, num_heads=config.decoder_attention_heads, dropout=config.attention_dropout,
+            embed_dim=self.embed_dim,
+            num_heads=config.decoder_attention_heads,
+            dropout=config.attention_dropout,
         )
         self.dropout = config.dropout
         self.activation_fn = ACT2FN[config.activation_function]
@@ -483,12 +489,16 @@ class FSMTDecoder(nn.Module):
             num_embeddings = config.tgt_vocab_size
             # XXX: self.padding_idx and config.pad_token_id are the same?
             self.embed_positions = SinusoidalPositionalEmbedding(
-                embed_dim, self.padding_idx, init_size=num_embeddings + self.padding_idx + 1 # removed: config.max_position_embeddings
-
+                embed_dim,
+                self.padding_idx,
+                init_size=num_embeddings + self.padding_idx + 1,  # removed: config.max_position_embeddings
             )
         else:
             self.embed_positions = LearnedPositionalEmbedding(
-                config.max_position_embeddings, config.d_model, self.padding_idx, config.extra_pos_embeddings,
+                config.max_position_embeddings,
+                config.d_model,
+                self.padding_idx,
+                config.extra_pos_embeddings,
             )
         self.layers = nn.ModuleList(
             [DecoderLayer(config) for _ in range(config.decoder_layers)]
@@ -498,14 +508,14 @@ class FSMTDecoder(nn.Module):
 
         # XXX: also add to init_weights
         self.output_projection = nn.Linear(
-                self.embed_tokens.weight.shape[1],
-                self.embed_tokens.weight.shape[0],
-                bias=False,
-            )
+            self.embed_tokens.weight.shape[1],
+            self.embed_tokens.weight.shape[0],
+            bias=False,
+        )
         # self.output_projection.weight = self.embed_tokens.weight
-        #nn.init.normal_(
+        # nn.init.normal_(
         #    self.output_projection.weight, mean=0, std=self.output_embed_dim ** -0.5
-        #)
+        # )
 
     def forward(
         self,
@@ -552,7 +562,7 @@ class FSMTDecoder(nn.Module):
             encoder_padding_mask = invert_mask(encoder_padding_mask)
 
         # embed positions
-        positions = self.embed_positions(input_ids) #, use_cache=use_cache)
+        positions = self.embed_positions(input_ids)  # , use_cache=use_cache)
 
         if use_cache:
             input_ids = input_ids[:, -1:]
@@ -721,7 +731,10 @@ class SelfAttention(nn.Module):
         # This is part of a workaround to get around fork/join parallelism not supporting Optional types.
         if key_padding_mask is not None and key_padding_mask.dim() == 0:
             key_padding_mask = None
-        assert key_padding_mask is None or key_padding_mask.size()[:2] == (bsz, src_len,)
+        assert key_padding_mask is None or key_padding_mask.size()[:2] == (
+            bsz,
+            src_len,
+        )
 
         if key_padding_mask is not None:  # don't attend to padding symbols
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
@@ -729,7 +742,11 @@ class SelfAttention(nn.Module):
             attn_weights = attn_weights.masked_fill(reshaped, float("-inf"))
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
         attn_weights = F.softmax(attn_weights, dim=-1)
-        attn_probs = F.dropout(attn_weights, p=self.dropout, training=self.training,)
+        attn_probs = F.dropout(
+            attn_weights,
+            p=self.dropout,
+            training=self.training,
+        )
 
         assert v is not None
         attn_output = torch.bmm(attn_probs, v)
@@ -822,6 +839,7 @@ def fill_with_neg_inf(t):
 def _get_shape(t):
     return getattr(t, "shape", None)
 
+
 # def output_projection(self):
 #     return nn.Linear(
 #         self.embed_tokens.weight.shape[1],
@@ -829,8 +847,10 @@ def _get_shape(t):
 #         bias=False,
 #     )
 
+
 @add_start_docstrings(
-    "The bare FSMT Model outputting raw hidden-states without any specific head on top.", FSMT_START_DOCSTRING,
+    "The bare FSMT Model outputting raw hidden-states without any specific head on top.",
+    FSMT_START_DOCSTRING,
 )
 class FSMTModel(PretrainedFSMTModel):
     def __init__(self, config: FSMTConfig):
@@ -921,9 +941,9 @@ class FSMTModel(PretrainedFSMTModel):
             return_dict=return_dict,
         )
 
-#        decoder_outputs = self.decoder.output_projection(decoder_outputs)
-# XXX: need to sort out the output_projection bit - fairseq does it at transformer.py:676
-# probably somewhere at the end of decoder()
+        #        decoder_outputs = self.decoder.output_projection(decoder_outputs)
+        # XXX: need to sort out the output_projection bit - fairseq does it at transformer.py:676
+        # probably somewhere at the end of decoder()
 
         if not return_dict:
             return decoder_outputs + encoder_outputs
@@ -942,16 +962,15 @@ class FSMTModel(PretrainedFSMTModel):
         return self.encoder.embed_tokens
 
     def set_input_embeddings(self, value):
-        self.encoder.embed_tokens = value # self.encoder_embed_tokens = value
+        self.encoder.embed_tokens = value  # self.encoder_embed_tokens = value
 
     def get_output_embeddings(self):
         return self.decoder.embed_tokens
         # XXX: it was, but probably not needed here
-        #return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
+        # return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
 
     def set_output_embeddings(self, value):
-        self.decoder.embed_tokens = value # self.decoder_embed_tokens = value
-
+        self.decoder.embed_tokens = value  # self.decoder_embed_tokens = value
 
 
 @add_start_docstrings(
@@ -1005,31 +1024,31 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         **unused,
     ):
         r"""
-        labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
-            Labels for computing the masked language modeling loss.
-            Indices should either be in ``[0, ..., config.vocab_size]`` or -100 (see ``input_ids`` docstring).
-            Tokens with indices set to ``-100`` are ignored (masked), the loss is only computed for the tokens
-            with labels in ``[0, ..., config.vocab_size]``.
+            labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`, defaults to :obj:`None`):
+                Labels for computing the masked language modeling loss.
+                Indices should either be in ``[0, ..., config.vocab_size]`` or -100 (see ``input_ids`` docstring).
+                Tokens with indices set to ``-100`` are ignored (masked), the loss is only computed for the tokens
+                with labels in ``[0, ..., config.vocab_size]``.
 
-    Returns:
+        Returns:
 
-    Conditional generation example::
+        Conditional generation example::
 
-            # Mask filling only works for fairseqtranslator-large
-            from transformers import FSMTTokenizer, FSMTForConditionalGeneration
-            tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large')
-            TXT = "My friends are <mask> but they eat too many carbs."
+                # Mask filling only works for fairseqtranslator-large
+                from transformers import FSMTTokenizer, FSMTForConditionalGeneration
+                tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large')
+                TXT = "My friends are <mask> but they eat too many carbs."
 
-            model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large')
-            input_ids = tokenizer([TXT], return_tensors='pt')['input_ids']
-            logits = model(input_ids).logits
+                model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large')
+                input_ids = tokenizer([TXT], return_tensors='pt')['input_ids']
+                logits = model(input_ids).logits
 
-            masked_index = (input_ids[0] == tokenizer.mask_token_id).nonzero().item()
-            probs = logits[0, masked_index].softmax(dim=0)
-            values, predictions = probs.topk(5)
+                masked_index = (input_ids[0] == tokenizer.mask_token_id).nonzero().item()
+                probs = logits[0, masked_index].softmax(dim=0)
+                values, predictions = probs.topk(5)
 
-            tokenizer.decode(predictions).split()
-            # ['good', 'great', 'all', 'really', 'very']
+                tokenizer.decode(predictions).split()
+                # ['good', 'great', 'all', 'really', 'very']
         """
         if "lm_labels" in unused:
             warnings.warn(
@@ -1061,7 +1080,7 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
             return_dict=return_dict,
         )
         # XXX: changed .shared to .decoder_embed_tokens
-        #lm_logits = F.linear(outputs[0], self.model.decoder.embed_tokens.weight, bias=self.final_logits_bias.squeeze())
+        # lm_logits = F.linear(outputs[0], self.model.decoder.embed_tokens.weight, bias=self.final_logits_bias.squeeze())
         lm_logits = outputs[0]
 
         masked_lm_loss = None
@@ -1149,6 +1168,7 @@ from typing import Any, Optional
 import torch
 from torch import Tensor, nn
 
+
 def make_positions(tensor, padding_idx: int):
     """Replace non-padding symbols with their position numbers.
 
@@ -1161,6 +1181,7 @@ def make_positions(tensor, padding_idx: int):
     mask = tensor.ne(padding_idx).int()
     return (torch.cumsum(mask, dim=1).type_as(mask) * mask).long() + padding_idx
 
+
 class SinusoidalPositionalEmbedding(nn.Module):
     """This module produces sinusoidal positional embeddings of any length.
 
@@ -1171,17 +1192,12 @@ class SinusoidalPositionalEmbedding(nn.Module):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
-        self.weights = SinusoidalPositionalEmbedding.get_embedding(
-            init_size, embedding_dim, padding_idx
-        )
+        self.weights = SinusoidalPositionalEmbedding.get_embedding(init_size, embedding_dim, padding_idx)
         self.register_buffer("_float_tensor", torch.FloatTensor(1))
         self.max_positions = int(1e5)
 
-
     @staticmethod
-    def get_embedding(
-        num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None
-    ):
+    def get_embedding(num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None):
         """Build sinusoidal embeddings.
 
         This matches the implementation in tensor2tensor, but differs slightly
@@ -1190,12 +1206,8 @@ class SinusoidalPositionalEmbedding(nn.Module):
         half_dim = embedding_dim // 2
         emb = math.log(10000) / (half_dim - 1)
         emb = torch.exp(torch.arange(half_dim, dtype=torch.float) * -emb)
-        emb = torch.arange(num_embeddings, dtype=torch.float).unsqueeze(
-            1
-        ) * emb.unsqueeze(0)
-        emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1).view(
-            num_embeddings, -1
-        )
+        emb = torch.arange(num_embeddings, dtype=torch.float).unsqueeze(1) * emb.unsqueeze(0)
+        emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1).view(num_embeddings, -1)
         if embedding_dim % 2 == 1:
             # zero pad
             emb = torch.cat([emb, torch.zeros(num_embeddings, 1)], dim=1)
@@ -1211,15 +1223,13 @@ class SinusoidalPositionalEmbedding(nn.Module):
         positions: Optional[Any] = None,
     ):
         """Input is expected to be of size [bsz x seqlen]."""
-        #bspair = torch.onnx.operators.shape_as_tensor(input)
-        #bsz, seq_len = bspair[0], bspair[1]
+        # bspair = torch.onnx.operators.shape_as_tensor(input)
+        # bsz, seq_len = bspair[0], bspair[1]
         bsz, seq_len = input.shape[:2]
         max_pos = self.padding_idx + 1 + seq_len
         if self.weights is None or max_pos > self.weights.size(0):
             # recompute/expand embeddings if needed
-            self.weights = SinusoidalPositionalEmbedding.get_embedding(
-                max_pos, self.embedding_dim, self.padding_idx
-            )
+            self.weights = SinusoidalPositionalEmbedding.get_embedding(max_pos, self.embedding_dim, self.padding_idx)
         self.weights = self.weights.to(self._float_tensor)
 
         if incremental_state is not None:
@@ -1229,11 +1239,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
 
         positions = make_positions(input, self.padding_idx)
 
-        return (
-            self.weights.index_select(0, positions.view(-1))
-            .view(bsz, seq_len, -1)
-            .detach()
-        )
+        return self.weights.index_select(0, positions.view(-1)).view(bsz, seq_len, -1).detach()
 
 
 class SinusoidalPositionalEmbedding_old(nn.Embedding):
@@ -1248,7 +1254,7 @@ class SinusoidalPositionalEmbedding_old(nn.Embedding):
     @staticmethod
     def _init_weight(out: nn.Parameter):
         """Identical to the XLM create_sinusoidal_embeddings except features are not interleaved.
-            The cos features are in the 2nd half of the vector. [dim // 2:]
+        The cos features are in the 2nd half of the vector. [dim // 2:]
         """
         n_pos, dim = out.shape
         position_enc = np.array(

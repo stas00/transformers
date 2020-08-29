@@ -23,8 +23,9 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerBase, PreTrainedTokenizerFast
-from transformers.testing_utils import require_tf, require_torch, slow, TestCasePlus
+from transformers.testing_utils import TestCasePlus, require_tf, require_torch, slow
 from transformers.tokenization_utils import AddedToken
+
 
 if TYPE_CHECKING:
     from transformers import PretrainedConfig, PreTrainedModel, TFPreTrainedModel
@@ -53,6 +54,7 @@ def merge_model_tokenizer_mappings(
 
 
 DEBUG = False
+
 
 class TokenizerCommonTester(TestCasePlus):
 

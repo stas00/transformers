@@ -55,7 +55,6 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "stas/fsmt-wmt19-de-en": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-de-en/merges.txt",
         "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/merges.txt",
     },
-
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
@@ -66,10 +65,18 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 }
 
 PRETRAINED_INIT_CONFIGURATION = {
-    "stas/fsmt-wmt19-ru-en": { "langs": ["ru", "en"], },
-    "stas/fsmt-wmt19-en-ru": { "langs": ["en", "ru"], },
-    "stas/fsmt-wmt19-de-en": { "langs": ["de", "en"], },
-    "stas/fsmt-wmt19-en-de": { "langs": ["en", "de"], },
+    "stas/fsmt-wmt19-ru-en": {
+        "langs": ["ru", "en"],
+    },
+    "stas/fsmt-wmt19-en-ru": {
+        "langs": ["en", "ru"],
+    },
+    "stas/fsmt-wmt19-de-en": {
+        "langs": ["de", "en"],
+    },
+    "stas/fsmt-wmt19-en-de": {
+        "langs": ["en", "de"],
+    },
 }
 
 
@@ -362,7 +369,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         text = self.moses_detokenize(tokens, self.tgt_lang)
         return text
 
-
     def build_inputs_with_special_tokens(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
@@ -417,7 +423,12 @@ class FSMTTokenizer(PreTrainedTokenizer):
                     "You should not supply a second sequence if the provided sequence of "
                     "ids is already formated with special tokens for the model."
                 )
-            return list(map(lambda x: 1 if x in [self.sep_token_id, self.cls_token_id] else 0, token_ids_0,))
+            return list(
+                map(
+                    lambda x: 1 if x in [self.sep_token_id, self.cls_token_id] else 0,
+                    token_ids_0,
+                )
+            )
         # no bos used in fairseq
         if token_ids_1 is not None:
             return ([0] * len(token_ids_0)) + [1] + ([0] * len(token_ids_1)) + [1]
@@ -468,7 +479,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
         if not os.path.isdir(save_directory):
             logger.error("Vocabulary path ({}) should be a directory".format(save_directory))
             return
-
 
         src_vocab_file = os.path.join(save_directory, VOCAB_FILES_NAMES["src_vocab_file"])
         tgt_vocab_file = os.path.join(save_directory, VOCAB_FILES_NAMES["tgt_vocab_file"])
