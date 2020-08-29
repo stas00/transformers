@@ -1,5 +1,3 @@
 # WIP
 
-## Converting weights / adjusting the model
-
-### Missing/Different
+- I think merges file should actually still have the frequency counters? check the other models (I remove those now in convert)

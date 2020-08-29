@@ -161,7 +161,7 @@ def _prepare_fsmt_decoder_inputs(
     return decoder_input_ids, decoder_padding_mask, causal_mask
 
 
-class PreTrainedFSMTModel(PreTrainedModel):
+class PretrainedFSMTModel(PreTrainedModel):
     config_class = FSMTConfig
     base_model_prefix = "model"
 
@@ -774,7 +774,7 @@ class SelfAttention(nn.Module):
         return k, v, new_key_padding_mask
 
 
-
+# XXX: remove this and its references
 class LearnedPositionalEmbedding(nn.Embedding):
     """
     This module learns positional embeddings up to a fixed maximum size.
@@ -832,7 +832,7 @@ def _get_shape(t):
 @add_start_docstrings(
     "The bare FSMT Model outputting raw hidden-states without any specific head on top.", FSMT_START_DOCSTRING,
 )
-class FSMTModel(PreTrainedFSMTModel):
+class FSMTModel(PretrainedFSMTModel):
     def __init__(self, config: FSMTConfig):
         super().__init__(config)
 
@@ -957,7 +957,7 @@ class FSMTModel(PreTrainedFSMTModel):
 @add_start_docstrings(
     "The FSMT Model with a language modeling head. Can be used for summarization.", FSMT_START_DOCSTRING
 )
-class FSMTForConditionalGeneration(PreTrainedFSMTModel):
+class FSMTForConditionalGeneration(PretrainedFSMTModel):
     base_model_prefix = "model"
     authorized_missing_keys = [r"final_logits_bias", r"encoder\.version", r"decoder\.version"]
 

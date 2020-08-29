@@ -154,6 +154,7 @@ from .tokenization_dpr import (
 )
 from .tokenization_electra import ElectraTokenizer, ElectraTokenizerFast
 from .tokenization_flaubert import FlaubertTokenizer
+from .tokenization_fsmt import FSMTTokenizer
 from .tokenization_gpt2 import GPT2Tokenizer, GPT2TokenizerFast
 from .tokenization_longformer import LongformerTokenizer, LongformerTokenizerFast
 from .tokenization_mbart import MBartTokenizer
@@ -322,6 +323,12 @@ if is_torch_available():
         FlaubertForTokenClassification,
         FlaubertModel,
         FlaubertWithLMHeadModel,
+    )
+    from .modeling_fsmt import (
+        FSMT_PRETRAINED_MODEL_ARCHIVE_LIST,
+        FSMTForConditionalGeneration,
+        FSMTModel,
+        PretrainedFSMTModel,
     )
     from .modeling_gpt2 import (
         GPT2_PRETRAINED_MODEL_ARCHIVE_LIST,

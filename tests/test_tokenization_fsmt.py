@@ -18,13 +18,14 @@ import json
 import os
 import unittest
 
-from transformers.testing_utils import slow
+from transformers.testing_utils import slow, TestCasePlus
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
 
-from .test_tokenization_common import TokenizerTesterMixin
+from .test_tokenization_common import TokenizerCommonTester
 
+class FSMTTokenizationTest(TokenizerCommonTester):
 
-class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
+    __test__ = True
 
     tokenizer_class = FSMTTokenizer
 
@@ -58,12 +59,23 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         vocab_tokens = dict(zip(vocab, range(len(vocab))))
         merges = ["l o 123", "lo w 1456", "e r</w> 1789", ""]
 
-        self.vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["vocab_file"])
+        self.langs = ["en", "ru"]
+        config = { 'langs': self.langs, }
+
+        self.src_vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["src_vocab_file"])
+        self.tgt_vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["tgt_vocab_file"])
+        config_file = os.path.join(self.tmpdirname, "tokenizer_config.json")
         self.merges_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["merges_file"])
-        with open(self.vocab_file, "w") as fp:
+        with open(self.src_vocab_file, "w") as fp:
+            fp.write(json.dumps(vocab_tokens))
+        # XXX: ru content
+        with open(self.tgt_vocab_file, "w") as fp:
             fp.write(json.dumps(vocab_tokens))
         with open(self.merges_file, "w") as fp:
             fp.write("\n".join(merges))
+        with open(config_file, "w") as fp:
+            fp.write(json.dumps(config))
+
 
     def get_input_output_texts(self, tokenizer):
         input_text = "lower newer"
@@ -72,7 +84,7 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
     def test_full_tokenizer(self):
         """ Adapted from Sennrich et al. 2015 and https://github.com/rsennrich/subword-nmt """
-        tokenizer = FSMTTokenizer(self.vocab_file, self.merges_file)
+        tokenizer = FSMTTokenizer(self.langs, self.src_vocab_file, self.tgt_vocab_file, self.merges_file)
 
         text = "lower"
         bpe_tokens = ["low", "er</w>"]
@@ -85,7 +97,7 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
     @slow
     def test_sequence_builders(self):
-        tokenizer = FSMTTokenizer.from_pretrained("fsmt-wmt19-ru-en")
+        tokenizer = FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-ru-en")
 
         text = tokenizer.encode("sequence builders", add_special_tokens=False)
         text_2 = tokenizer.encode("multi-sequence build", add_special_tokens=False)
@@ -93,5 +105,5 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         encoded_sentence = tokenizer.build_inputs_with_special_tokens(text)
         encoded_pair = tokenizer.build_inputs_with_special_tokens(text, text_2)
 
-        assert encoded_sentence == [0] + text + [1]
-        assert encoded_pair == [0] + text + [1] + text_2 + [1]
+        assert encoded_sentence == text + [2]
+        assert encoded_pair == text + [2] + text_2 + [2]
