@@ -21,10 +21,10 @@ import unittest
 from transformers.testing_utils import TestCasePlus, slow
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
 
-from .test_tokenization_common import TokenizerCommonTester
+from .test_tokenization_common import TokenizerTesterMixin
 
 
-class FSMTTokenizationTest(TokenizerCommonTester):
+class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
     __test__ = True
 
