@@ -79,9 +79,6 @@ def load_xsum_checkpoint(checkpoint_path):
     return hub_interface
 
 
-torch.load_state_dict
-
-
 @torch.no_grad()
 def convert_bart_checkpoint(checkpoint_path, pytorch_dump_folder_path, hf_checkpoint_name=None):
     """

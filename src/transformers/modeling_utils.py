@@ -940,11 +940,9 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin):
 
             # Some models may have keys that are not in the state by design, removing them before needlessly warning
             # the user.
-            # print(cls.authorized_missing_keys)
             if cls.authorized_missing_keys is not None:
                 for pat in cls.authorized_missing_keys:
                     missing_keys = [k for k in missing_keys if re.search(pat, k) is None]
-            # print(missing_keys)
 
             if len(unexpected_keys) > 0:
                 logger.warning(
