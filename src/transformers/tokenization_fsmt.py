@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import unicodedata
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 import sacremoses as sm
 
