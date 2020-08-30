@@ -989,11 +989,14 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         self.register_buffer("final_logits_bias", torch.zeros((1, self.model.decoder.embed_tokens.num_embeddings)))
 
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
-        # XXX: changed .shared to .encoder_embed_tokens - what about decoder?
-        # This function is most likely broken!
         old_num_tokens = self.model.encoder.embed_tokens.num_embeddings
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
         self.model.encoder.embed_tokens = new_embeddings
+
+        old_num_tokens = self.model.decoder.embed_tokens.num_embeddings
+        new_embeddings = super().resize_token_embeddings(new_num_tokens)
+        self.model.decoder.embed_tokens = new_embeddings
+
         self._resize_final_logits_bias(new_num_tokens, old_num_tokens)
         return new_embeddings
 

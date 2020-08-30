@@ -124,14 +124,11 @@ class PreTrainedTokenizer(PreTrainedTokenizerBase):
     def is_fast(self) -> bool:
         return False
 
-    # XXX:!!! port into the subclass
     @property
     def vocab_size(self) -> int:
         """
         :obj:`int`: Size of the base vocabulary (without the added tokens).
         """
-        if getattr(self, "src_vocab_size"):
-            return self.src_vocab_size
         raise NotImplementedError
 
     def get_vocab(self) -> Dict[str, int]:
@@ -144,8 +141,6 @@ class PreTrainedTokenizer(PreTrainedTokenizerBase):
         Returns:
             :obj:`Dict[str, int]`: The vocabulary.
         """
-        if getattr(self, "get_src_vocab"):
-            return self.get_src_vocab()
         raise NotImplementedError()
 
     def get_added_vocab(self) -> Dict[str, int]:

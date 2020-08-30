@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import unicodedata
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 import sacremoses as sm
 
@@ -229,6 +229,15 @@ class FSMTTokenizer(PreTrainedTokenizer):
         merges = [tuple(merge.split()[:2]) for merge in merges]
         self.bpe_ranks = dict(zip(merges, range(len(merges))))
         self.cache = {}
+
+    # hack override
+    def get_vocab(self) -> Dict[str, int]:
+        return self.get_src_vocab()
+
+    # hack override
+    @property
+    def vocab_size(self) -> int:
+        return self.src_vocab_size
 
     def moses_punct_norm(self, text, lang):
         if lang not in self.cache_moses_punct_normalizer:
