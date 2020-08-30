@@ -77,6 +77,8 @@ def load_xsum_checkpoint(checkpoint_path):
     hub_interface = torch.hub.load("pytorch/fairseq", "bart.large.cnn").eval()
     hub_interface.model.load_state_dict(sd["model"])
     return hub_interface
+
+
 torch.load_state_dict
 
 

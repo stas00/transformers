@@ -124,6 +124,7 @@ class PreTrainedTokenizer(PreTrainedTokenizerBase):
     def is_fast(self) -> bool:
         return False
 
+    # XXX:!!! port into the subclass
     @property
     def vocab_size(self) -> int:
         """

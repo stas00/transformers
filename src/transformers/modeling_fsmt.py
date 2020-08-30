@@ -1182,6 +1182,7 @@ def make_positions(tensor, padding_idx: int):
     return (torch.cumsum(mask, dim=1).type_as(mask) * mask).long() + padding_idx
 
 
+# XXX: doesn't support use_cache as Bart's version does
 class SinusoidalPositionalEmbedding(nn.Module):
     """This module produces sinusoidal positional embeddings of any length.
 
@@ -1196,6 +1197,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
         self.register_buffer("_float_tensor", torch.FloatTensor(1))
         self.max_positions = int(1e5)
 
+    # XXX: bart uses s/num_embeddings/num_positions/, s/weights/weight/ - could make those match
     @staticmethod
     def get_embedding(num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None):
         """Build sinusoidal embeddings.
@@ -1240,39 +1242,3 @@ class SinusoidalPositionalEmbedding(nn.Module):
         positions = make_positions(input, self.padding_idx)
 
         return self.weights.index_select(0, positions.view(-1)).view(bsz, seq_len, -1).detach()
-
-
-class SinusoidalPositionalEmbedding_old(nn.Embedding):
-    """This module produces sinusoidal positional embeddings of any length."""
-
-    def __init__(self, num_positions, embedding_dim, padding_idx=None):
-        super().__init__(num_positions, embedding_dim)
-        if embedding_dim % 2 != 0:
-            raise NotImplementedError(f"odd embedding_dim {embedding_dim} not supported")
-        self.weight = self._init_weight(self.weight)
-
-    @staticmethod
-    def _init_weight(out: nn.Parameter):
-        """Identical to the XLM create_sinusoidal_embeddings except features are not interleaved.
-        The cos features are in the 2nd half of the vector. [dim // 2:]
-        """
-        n_pos, dim = out.shape
-        position_enc = np.array(
-            [[pos / np.power(10000, 2 * (j // 2) / dim) for j in range(dim)] for pos in range(n_pos)]
-        )
-        out[:, 0 : dim // 2] = torch.FloatTensor(np.sin(position_enc[:, 0::2]))  # This line breaks for odd n_pos
-        out[:, dim // 2 :] = torch.FloatTensor(np.cos(position_enc[:, 1::2]))
-        out.detach_()
-        out.requires_grad = False
-        return out
-
-    @torch.no_grad()
-    def forward(self, input_ids, use_cache=False):
-        """Input is expected to be of size [bsz x seqlen]."""
-        bsz, seq_len = input_ids.shape[:2]
-        if use_cache:
-            positions = input_ids.data.new(1, 1).fill_(seq_len - 1)  # called before slicing
-        else:
-            # starts at 0, ends at 1-seq_len
-            positions = torch.arange(seq_len, dtype=torch.long, device=self.weight.device)
-        return super().forward(positions)

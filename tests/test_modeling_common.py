@@ -643,6 +643,8 @@ class ModelTesterMixin:
             self.assertIsInstance(model.get_input_embeddings(), (torch.nn.Embedding, AdaptiveEmbedding))
             model.set_input_embeddings(torch.nn.Embedding(10, 10))
             x = model.get_output_embeddings()
+            print(type(x))
+
             self.assertTrue(x is None or isinstance(x, torch.nn.Linear))
 
     def test_correct_missing_keys(self):
@@ -795,6 +797,7 @@ class ModelTesterMixin:
                 inputs["decoder_inputs_embeds"] = wte(decoder_input_ids)
 
             with torch.no_grad():
+                print(model_class)
                 model(**inputs)
 
     def test_lm_head_model_random_no_beam_search_generate(self):

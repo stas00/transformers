@@ -43,9 +43,9 @@ class FSMTConfig(PretrainedConfig):
     # update the defaults from config file
     def __init__(
         self,
-        src_vocab_size,  # new
-        tgt_vocab_size,  # new
-        langs,  # new
+        src_vocab_size=None,  # new
+        tgt_vocab_size=None,  # new
+        langs=None,  # new
         activation_function="relu",  # changed
         num_labels=3,
         d_model=1024,
