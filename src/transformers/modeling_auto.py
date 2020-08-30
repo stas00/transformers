@@ -29,6 +29,7 @@ from .configuration_auto import (
     ElectraConfig,
     EncoderDecoderConfig,
     FlaubertConfig,
+    FSMTConfig,
     GPT2Config,
     LongformerConfig,
     MBartConfig,
@@ -106,6 +107,10 @@ from .modeling_flaubert import (
     FlaubertForTokenClassification,
     FlaubertModel,
     FlaubertWithLMHeadModel,
+)
+from .modeling_fsmt import (
+    FSMTModel,
+    FSMTForConditionalGeneration
 )
 from .modeling_gpt2 import GPT2LMHeadModel, GPT2Model
 from .modeling_longformer import (
@@ -195,6 +200,7 @@ MODEL_MAPPING = OrderedDict(
         (TransfoXLConfig, TransfoXLModel),
         (XLNetConfig, XLNetModel),
         (FlaubertConfig, FlaubertModel),
+        (FSMTConfig, FSMTModel),
         (XLMConfig, XLMModel),
         (CTRLConfig, CTRLModel),
         (ElectraConfig, ElectraModel),
@@ -211,6 +217,7 @@ MODEL_FOR_PRETRAINING_MAPPING = OrderedDict(
         (CamembertConfig, CamembertForMaskedLM),
         (XLMRobertaConfig, XLMRobertaForMaskedLM),
         (BartConfig, BartForConditionalGeneration),
+        (FSMTConfig, FSMTForConditionalGeneration),
         (LongformerConfig, LongformerForMaskedLM),
         (RobertaConfig, RobertaForMaskedLM),
         (BertConfig, BertForPreTraining),
@@ -295,6 +302,7 @@ MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING = OrderedDict(
         (MarianConfig, MarianMTModel),
         (MBartConfig, MBartForConditionalGeneration),
         (BartConfig, BartForConditionalGeneration),
+        (FSMTConfig, FSMTForConditionalGeneration),
         (EncoderDecoderConfig, EncoderDecoderModel),
     ]
 )

@@ -116,6 +116,10 @@ CONFIG_MAPPING = OrderedDict(
             BartConfig,
         ),
         (
+            "fsmt",
+            FSMTConfig,
+        ),
+        (
             "reformer",
             ReformerConfig,
         ),
