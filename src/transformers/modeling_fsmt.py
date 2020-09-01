@@ -888,7 +888,7 @@ class FSMTModel(PretrainedFSMTModel):
     @add_start_docstrings_to_callable(FSMT_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="facebook/fairseqtranslator-large",
+        checkpoint="stas/fsmt-wmt19-ru-en",
         output_type=BaseModelOutputWithPast,
         config_class=_CONFIG_FOR_DOC,
     )
@@ -1052,6 +1052,8 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
                 Indices should either be in ``[0, ..., config.vocab_size]`` or -100 (see ``input_ids`` docstring).
                 Tokens with indices set to ``-100`` are ignored (masked), the loss is only computed for the tokens
                 with labels in ``[0, ..., config.vocab_size]``.
+
+        Returns:
 
         """
         if "lm_labels" in unused:
