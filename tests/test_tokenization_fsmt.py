@@ -18,9 +18,8 @@ import json
 import os
 import unittest
 
-from transformers.testing_utils import TestCasePlus, slow
+from transformers.testing_utils import slow
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
-
 from .test_tokenization_common import TokenizerTesterMixin
 
 
@@ -78,11 +77,6 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
             fp.write("\n".join(merges))
         with open(config_file, "w") as fp:
             fp.write(json.dumps(config))
-
-    def get_input_output_texts(self, tokenizer):
-        input_text = "lower newer"
-        output_text = "lower newer"
-        return input_text, output_text
 
     def test_full_tokenizer(self):
         """ Adapted from Sennrich et al. 2015 and https://github.com/rsennrich/subword-nmt """
