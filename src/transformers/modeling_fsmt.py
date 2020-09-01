@@ -1,5 +1,4 @@
 # coding=utf-8
-# coding=utf-8
 # Copyright 2020 The Facebook AI Research Team Authors and The HuggingFace Inc. team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""PyTorch Fairseq model, ported from the fairseq repo."""
+#
+# Original implementation: https://github.com/pytorch/fairseq/tree/master/examples/wmt19
+# Authors:
+# - @alexeib Alexei Baevski
+# - @edunov Sergey Edunov
+# - @michaelauli Michael Auli
+# - @myleott Myle Ott
+# - @nng555 Nathan Ng
+# - David Grangier
+# - Kyra Yee
+#
+# Paper: Facebook FAIR's WMT19 News Translation Task Submission https://arxiv.org/abs/1907.06616
+#
+"""PyTorch Fairseq model, ported from https://github.com/pytorch/fairseq/"""
 
 import logging
 import math

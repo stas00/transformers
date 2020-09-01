@@ -60,6 +60,7 @@ def generate_summaries_or_translations(
             input_ids=batch.input_ids,
             attention_mask=batch.attention_mask,
             decoder_start_token_id=decoder_start_token_id,
+            num_beams=5,
             **generate_kwargs,
         )
         dec = tokenizer.batch_decode(summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False)
