@@ -108,10 +108,7 @@ from .modeling_flaubert import (
     FlaubertModel,
     FlaubertWithLMHeadModel,
 )
-from .modeling_fsmt import (
-    FSMTModel,
-    FSMTForConditionalGeneration
-)
+from .modeling_fsmt import FSMTForConditionalGeneration, FSMTModel
 from .modeling_gpt2 import GPT2LMHeadModel, GPT2Model
 from .modeling_longformer import (
     LongformerForMaskedLM,

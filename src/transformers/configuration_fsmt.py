@@ -29,7 +29,10 @@ FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     "stas/fsmt-wmt19-en-de": "https://s3.amazonaws.com/models.huggingface.co/bert/stas/fsmt-wmt19-en-de/config.json",
 }
 
-# XXX: this one is modeled after BartConfig
+
+# Porting notes:
+# this one is modeled after BartConfig
+#
 class FSMTConfig(PretrainedConfig):
     r"""
         Configuration class for FSMT. Parameters are renamed from the fairseq implementation

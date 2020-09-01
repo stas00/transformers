@@ -19,7 +19,6 @@ import json
 import logging
 import os
 import re
-import sys
 import unicodedata
 from typing import Dict, List, Optional
 
@@ -399,7 +398,6 @@ class FSMTTokenizer(PreTrainedTokenizer):
             :obj:`List[int]`: list of `input IDs <../glossary.html#input-ids>`__ with the appropriate special tokens.
 
         """
-        bos = [self.bos_token_id]
         sep = [self.sep_token_id]
 
         # no bos used in fairseq

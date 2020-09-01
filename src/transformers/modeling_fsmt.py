@@ -19,9 +19,8 @@ import logging
 import math
 import random
 import warnings
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -36,14 +35,7 @@ from .file_utils import (
     add_start_docstrings_to_callable,
     replace_return_docstrings,
 )
-from .modeling_outputs import (
-    BaseModelOutput,
-    BaseModelOutputWithPast,
-    Seq2SeqLMOutput,
-    Seq2SeqModelOutput,
-    Seq2SeqQuestionAnsweringModelOutput,
-    Seq2SeqSequenceClassifierOutput,
-)
+from .modeling_outputs import BaseModelOutput, BaseModelOutputWithPast, Seq2SeqLMOutput, Seq2SeqModelOutput
 from .modeling_utils import PreTrainedModel
 
 
@@ -1163,13 +1155,6 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         return self.model.decoder.embed_tokens
         # XXX: it was, but probably not needed here
         # return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
-
-
-import math
-from typing import Any, Optional
-
-import torch
-from torch import Tensor, nn
 
 
 def make_positions(tensor, padding_idx: int):

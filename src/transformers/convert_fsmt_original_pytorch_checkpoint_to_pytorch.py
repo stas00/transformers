@@ -26,18 +26,16 @@ import logging
 import os
 import re
 from collections import OrderedDict
-from pathlib import Path
 
 import fairseq
-import numpy
 import torch
 from fairseq import hub_utils
 from fairseq.data.dictionary import Dictionary
 
-from transformers import CONFIG_NAME, WEIGHTS_NAME
+from transformers import WEIGHTS_NAME
 from transformers.configuration_fsmt import FSMTConfig
 from transformers.modeling_fsmt import FSMTForConditionalGeneration
-from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
+from transformers.tokenization_fsmt import VOCAB_FILES_NAMES
 
 
 logging.basicConfig(level=logging.INFO)
@@ -197,10 +195,6 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         (1, model_state_dict["model.decoder.embed_tokens.weight"].shape[0])
     )
 
-    # # XXX: see if can remove this one
-    # model_state_dict["model.encoder_embed_tokens.weight"] = torch.zeros((src_vocab_size, args["encoder_embed_dim"]))
-    # model_state_dict["model.decoder_embed_tokens.weight"] = torch.zeros((tgt_vocab_size, args["decoder_embed_dim"]))
-
     # hf_checkpoint_name = "fsmt-wmt19-ru-en"
     config = FSMTConfig.from_pretrained(pytorch_dump_folder_path)
     model_new = FSMTForConditionalGeneration(config)
@@ -212,8 +206,6 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
     pytorch_weights_dump_path = os.path.join(pytorch_dump_folder_path, WEIGHTS_NAME)
     print(f"Generating {pytorch_weights_dump_path}")
     torch.save(model_state_dict, pytorch_weights_dump_path)
-
-    import deepdiff
 
     # test that it's the same
     test_state_dict = torch.load(pytorch_weights_dump_path)
