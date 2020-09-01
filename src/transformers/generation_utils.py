@@ -388,10 +388,6 @@ class GenerationMixin:
             if decoder_start_token_id is None:
                 # see if BOS token can be used for decoder_start_token_id
                 if bos_token_id is not None:
-                    # XXX: no longer needed?
-                    # if hasattr(self.config, "decoder_start_token_id"):
-                    #     decoder_start_token_id = self.config.decoder_start_token_id
-                    # elif bos_token_id is not None:
                     decoder_start_token_id = bos_token_id
                 elif hasattr(self.config, "decoder") and hasattr(self.config.decoder, "bos_token_id"):
                     decoder_start_token_id = self.config.decoder.bos_token_id
@@ -399,7 +395,6 @@ class GenerationMixin:
                     raise ValueError(
                         "decoder_start_token_id or bos_token_id has to be defined for encoder-decoder generation"
                     )
-
             assert hasattr(self, "get_encoder"), "{} should have a 'get_encoder' function defined".format(self)
             assert callable(self.get_encoder), "{} should be a method".format(self.get_encoder)
 
