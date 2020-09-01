@@ -104,3 +104,32 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
         assert encoded_sentence == text + [2]
         assert encoded_pair == text + [2] + text_2 + [2]
+
+    @slow
+    def test_match_encoding(self):
+        tokenizer = FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-en-ru")
+
+        targets = [
+            [
+                "Here's a little song I wrote. Don't worry, be happy.",
+                [2470, 39, 11, 2349, 7222, 70, 5979, 7, 8450, 1050, 13160, 5, 26, 6445, 7, 2],
+            ],
+            ["This is it. No more. I'm done!", [132, 21, 37, 7, 1434, 86, 7, 70, 6476, 1305, 427, 2]],
+        ]
+
+        # these were added as different mismatches were found, to validate the targets (or create more inputs) run:
+        # import torch
+        # for text, tgt_input_ids in targets:
+        #     mname = "transformer.wmt19.en-ru"
+        #     checkpoint_file = "model1.pt"
+        #     model = torch.hub.load(
+        #         "pytorch/fairseq", mname, checkpoint_file=checkpoint_file, tokenizer="moses", bpe="fastbpe"
+        #     )
+        #     encoded = model.encode(text)
+        #     print(f"""[\n"{text}",\n {encoded.tolist()}\n],""")
+
+        for text, tgt_input_ids in targets:
+            input_ids = tokenizer.encode(text, return_tensors="pt")[0].tolist()
+            print(input_ids)
+            print(tgt_input_ids)
+            self.assertListEqual(input_ids, tgt_input_ids)

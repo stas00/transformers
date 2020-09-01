@@ -82,7 +82,6 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 #  - doesn't support use_cache as Bart's version does
 
 
-
 FSMT_START_DOCSTRING = r"""
 
     This model is a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`_ sub-class. Use it as a regular PyTorch Module and
