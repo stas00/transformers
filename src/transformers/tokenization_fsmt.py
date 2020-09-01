@@ -306,7 +306,7 @@ class FSMTTokenizer(PreTrainedTokenizer):
             self.cache_moses_tokenizer[lang] = moses_tokenizer
         else:
             moses_tokenizer = self.cache_moses_tokenizer[lang]
-        return moses_tokenizer.tokenize(text, return_str=False, escape=False)
+        return moses_tokenizer.tokenize(text, aggressive_dash_splits=True, return_str=False, escape=True)
 
     def moses_detokenize(self, tokens, lang):
         if lang not in self.cache_moses_tokenizer:
