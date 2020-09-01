@@ -51,19 +51,19 @@ class ModelTester:
         self.langs = ["ru", "en"]
         self.batch_size = 13
         self.seq_length = 7
-        self.is_training = True
+        self.is_training = False
         self.use_labels = False
         self.hidden_size = 16
         self.num_hidden_layers = 2
         self.num_attention_heads = 4
         self.intermediate_size = 4
-        self.hidden_act = "gelu"
+        self.hidden_act = "relu"
         self.hidden_dropout_prob = 0.1
         self.attention_probs_dropout_prob = 0.1
         self.max_position_embeddings = 20
-        self.eos_token_id = 2
-        self.pad_token_id = 1
         self.bos_token_id = 0
+        self.pad_token_id = 1
+        self.eos_token_id = 2
         torch.manual_seed(0)
 
         # hack needed for modeling_common tests - despite not really having this attribute in this model
