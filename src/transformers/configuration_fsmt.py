@@ -33,6 +33,11 @@ FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
 # Porting notes:
 # this one is modeled after BartConfig
 #
+#    Differences with BART:
+#    - src/tgt vocabs aren't shared
+#    - token embeddings aren't shared
+#    - needs a language pair
+#
 class FSMTConfig(PretrainedConfig):
     r"""
         Configuration class for FSMT. Parameters are renamed from the fairseq implementation
@@ -82,14 +87,14 @@ class FSMTConfig(PretrainedConfig):
         **common_kwargs
     ):
         r"""
-        :class:`~transformers.BartConfig` is the configuration class for `BartModel`.
+        :class:`~transformers.FSMTConfig` is the configuration class for `FSMTModel`.
 
         Examples::
 
-            >>> from transformers import BartConfig, BartModel
+            >>> from transformers import FSMTConfig, FSMTModel
 
-            >>> config = BartConfig.from_pretrained('facebook/bart-large')
-            >>> model = BartModel(config)
+            >>> config = FSMTConfig.from_pretrained('stas/fsmt-wmt19-en-ru')
+            >>> model = FSMTModel(config)
 
         """
         if "hidden_size" in common_kwargs:

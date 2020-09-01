@@ -148,18 +148,72 @@ def remove_non_printing_char(text):
     return "".join(output)
 
 
+# Porting notes:
+# this one is modeled after XLMTokenizer
+#
+# added:
+# - src_vocab_file,
+# - tgt_vocab_file,
+# - langs,
+
+
 class FSMTTokenizer(PreTrainedTokenizer):
     """
-    BPE tokenizer
+    BPE tokenizer for FSMT (fairseq transformer)
+    See: https://github.com/pytorch/fairseq/tree/master/examples/wmt19
 
-    notes:
-    removed
-    - vocab_file
-    - do_lowercase_and_remove_accent
-    added:
-    - src_vocab_file,
-    - tgt_vocab_file,
-    - langs,
+
+    - Moses preprocessing & tokenization for most supported languages
+    - (optionally) lower case & normalize all inputs text
+    - argument ``special_tokens`` and function ``set_special_tokens``, can be used to add additional symbols \
+      (ex: "__classify__") to a vocabulary
+    - `langs` defines a pair of languages
+
+    This tokenizer inherits from :class:`~transformers.PreTrainedTokenizer` which contains most of the methods. Users
+    should refer to the superclass for more information regarding methods.
+
+    Args:
+        langs (:obj:`List[str]`):
+            a list of two languages to translate from and to, e.g. ``["en", "ru"]``.
+        src_vocab_file (:obj:`string`):
+            Source language vocabulary file.
+        tgt_vocab_file (:obj:`string`):
+            Target language vocabulary file.
+        merges_file (:obj:`string`):
+            Merges file.
+        do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
+            Whether to lowercase the input when tokenizing.
+        remove_space (:obj:`bool`, `optional`, defaults to :obj:`True`):
+            Whether to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (:obj:`bool`, `optional`, defaults to :obj:`False`):
+            Whether to keep accents when tokenizing.
+        unk_token (:obj:`string`, `optional`, defaults to "<unk>"):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (:obj:`string`, `optional`, defaults to "<s>"):
+            The beginning of sequence token that was used during pre-training. Can be used a sequence classifier token.
+
+            .. note::
+
+                When building a sequence using special tokens, this is not the token that is used for the beginning
+                of sequence. The token used is the :obj:`cls_token`.
+        sep_token (:obj:`string`, `optional`, defaults to "</s>"):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences
+            for sequence classification or for a text and a question for question answering.
+            It is also used as the last token of a sequence built with special tokens.
+        pad_token (:obj:`string`, `optional`, defaults to "<pad>"):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (:obj:`string`, `optional`, defaults to "</s>"):
+            The classifier token which is used when doing sequence classification (classification of the whole
+            sequence instead of per-token classification). It is the first token of the sequence when built with
+            special tokens.
+        mask_token (:obj:`string`, `optional`, defaults to "<special1>"):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        additional_special_tokens (:obj:`List[str]`, `optional`, defaults to :obj:`["<special0>","<special1>","<special2>","<special3>","<special4>","<special5>","<special6>","<special7>","<special8>","<special9>"]`):
+            List of additional special tokens.
+
+
     """
 
     vocab_files_names = VOCAB_FILES_NAMES

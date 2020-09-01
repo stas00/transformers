@@ -56,6 +56,21 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 # See all FSMT models at https://huggingface.co/models?search=fsmt
 
 
+# Porting notes:
+# this one is modeled after BartModel*
+#
+#    Differences with Bart:
+#
+
+# SinusoidalPositionalEmbedding is slightly different from Bart's - generates
+# different embeddings. This implementation is copied verbatim from fairseq with
+# some small changes to make it work here.
+#
+# Other changes:
+#  - doesn't support use_cache as Bart's version does
+
+
+
 FSMT_START_DOCSTRING = r"""
 
     This model is a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`_ sub-class. Use it as a regular PyTorch Module and
@@ -68,20 +83,21 @@ FSMT_START_DOCSTRING = r"""
 
 """
 FSMT_GENERATION_EXAMPLE = r"""
-    Summarization example::
+    Translation example::
 
-        from transformers import FSMTTokenizer, FSMTForConditionalGeneration, FSMTConfig
+        from transformers import FSMTTokenizer, FSMTForConditionalGeneration
 
-        # see ``examples/summarization/fairseqtranslator/run_eval.py`` for a longer example
-        model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large-cnn')
-        tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large-cnn')
+        mname = "stas/fsmt-wmt19-ru-en"
+        model = FSMTForConditionalGeneration.from_pretrained(mname)
+        tokenizer = FSMTTokenizer.from_pretrained(mname)
 
-        ARTICLE_TO_SUMMARIZE = "My friends are cool but they eat too many carbs."
-        inputs = tokenizer([ARTICLE_TO_SUMMARIZE], max_length=1024, return_tensors='pt')
-
-        # Generate Summary
-        summary_ids = model.generate(inputs['input_ids'], num_beams=4, max_length=5, early_stopping=True)
-        print([tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids])
+        src_text = "Машинное обучение - это здорово, не так ли?"
+        input_ids = tokenizer.encode(src_text, return_tensors='pt')
+        outputs = model.generate(input_ids, num_beams=5, num_return_sequences=3)
+        for i, output in enumerate(outputs):
+            decoded = tokenizer.decode(output, skip_special_tokens=True)
+            print(f"{i}: {decoded})
+         # 1: Machine learning is great, isn't it? ...
 
 """
 
@@ -1025,25 +1041,6 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
                 Tokens with indices set to ``-100`` are ignored (masked), the loss is only computed for the tokens
                 with labels in ``[0, ..., config.vocab_size]``.
 
-        Returns:
-
-        Conditional generation example::
-
-                # Mask filling only works for fairseqtranslator-large
-                from transformers import FSMTTokenizer, FSMTForConditionalGeneration
-                tokenizer = FSMTTokenizer.from_pretrained('facebook/fairseqtranslator-large')
-                TXT = "My friends are <mask> but they eat too many carbs."
-
-                model = FSMTForConditionalGeneration.from_pretrained('facebook/fairseqtranslator-large')
-                input_ids = tokenizer([TXT], return_tensors='pt')['input_ids']
-                logits = model(input_ids).logits
-
-                masked_index = (input_ids[0] == tokenizer.mask_token_id).nonzero().item()
-                probs = logits[0, masked_index].softmax(dim=0)
-                values, predictions = probs.topk(5)
-
-                tokenizer.decode(predictions).split()
-                # ['good', 'great', 'all', 'really', 'very']
         """
         if "lm_labels" in unused:
             warnings.warn(
@@ -1170,7 +1167,6 @@ def make_positions(tensor, padding_idx: int):
     return (torch.cumsum(mask, dim=1).type_as(mask) * mask).long() + padding_idx
 
 
-# XXX: doesn't support use_cache as Bart's version does
 class SinusoidalPositionalEmbedding(nn.Module):
     """This module produces sinusoidal positional embeddings of any length.
 
