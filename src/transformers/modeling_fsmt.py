@@ -1132,7 +1132,7 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         if isinstance(token_ids, int):
             token_ids = [token_ids]
         all_but_token_ids_mask = torch.tensor(
-            [x for x in range(self.config.src_vocab_size) if x not in token_ids],
+            [x for x in range(self.config.tgt_vocab_size) if x not in token_ids],
             dtype=torch.long,
             device=next(self.parameters()).device,
         )
