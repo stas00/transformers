@@ -58,6 +58,7 @@ class FSMTConfig(PretrainedConfig):
         num_labels=3,
         d_model=1024,
         max_length=256,
+        num_beams=8,
         max_position_embeddings=1024,
         extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
         encoder_ffn_dim=4096,
@@ -112,6 +113,7 @@ class FSMTConfig(PretrainedConfig):
         self.tgt_vocab_size = tgt_vocab_size
         self.d_model = d_model  # encoder_embed_dim and decoder_embed_dim
         self.max_length = max_length
+        self.num_beams = num_beams
         self.encoder_ffn_dim = encoder_ffn_dim
         self.encoder_layers = self.num_hidden_layers = encoder_layers
         self.encoder_attention_heads = encoder_attention_heads
