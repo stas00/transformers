@@ -1194,7 +1194,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
         self.weights = SinusoidalPositionalEmbedding.get_embedding(init_size, embedding_dim, padding_idx)
-        self.register_buffer("_float_tensor", torch.FloatTensor(1))
+        self.register_buffer("_float_tensor", torch.zeros(1)) # used for getting the right device
         self.max_positions = int(1e5)
 
     # XXX: bart uses s/num_embeddings/num_positions/, s/weights/weight/ - could make those match
