@@ -14,11 +14,51 @@
 # limitations under the License.
 """Convert fairseq transform wmt19 checkpoint."""
 
-# exec:
-# cd /code/huggingface/transformers-fair-wmt
-# PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.ru-en.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-ru-en
-# transformers-cli upload data/fsmt-wmt19-ru-en;
-# etc
+"""
+To convert run:
+assuming the fairseq data is under data/wmt19.ru-en.ensemble, data/wmt19.en-ru.ensemble, etc
+
+export ROOT=/code/huggingface/transformers-fair-wmt
+cd $ROOT
+mkdir data
+
+# get data (run once)
+wget https://dl.fbaipublicfiles.com/fairseq/models/wmt19.en-de.joined-dict.ensemble.tar.gz
+wget https://dl.fbaipublicfiles.com/fairseq/models/wmt19.de-en.joined-dict.ensemble.tar.gz
+wget https://dl.fbaipublicfiles.com/fairseq/models/wmt19.en-ru.ensemble.tar.gz
+wget https://dl.fbaipublicfiles.com/fairseq/models/wmt19.ru-en.ensemble.tar.gz
+tar -xvzf wmt19.en-de.joined-dict.ensemble.tar.gz
+tar -xvzf wmt19.de-en.joined-dict.ensemble.tar.gz
+tar -xvzf wmt19.en-ru.ensemble.tar.gz
+tar -xvzf wmt19.ru-en.ensemble.tar.gz
+
+
+# run conversions and uploads
+
+export PAIR=ru-en
+PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.$PAIR.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-$PAIR
+
+export PAIR=en-ru
+PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.$PAIR.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-$PAIR
+
+export PAIR=de-en
+PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.$PAIR.joined-dict.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-$PAIR
+
+export PAIR=en-de
+PYTHONPATH="src" python src/transformers/convert_fsmt_original_pytorch_checkpoint_to_pytorch.py --fsmt_checkpoint_path data/wmt19.$PAIR.joined-dict.ensemble --pytorch_dump_folder_path data/fsmt-wmt19-$PAIR
+
+
+# upload
+cd data
+transformers-cli upload fsmt-wmt19-ru-en
+transformers-cli upload fsmt-wmt19-en-ru
+transformers-cli upload fsmt-wmt19-de-en
+transformers-cli upload fsmt-wmt19-en-de
+cd -
+
+# happy translations
+
+"""
 
 import argparse
 import json
@@ -46,8 +86,8 @@ json_indent = 2 if DEBUG else None
 
 
 def rewrite_dict_keys(d):
-    # (1) remove word breaking symbol, (2) add word ending symbol where the word is not broken up
-    # d = {'le@@': 5, 'tt@@': 6, 'er': 7} => {'le': 5, 'tt': 6, 'er</w>': 7}
+    # (1) remove word breaking symbol, (2) add word ending symbol where the word is not broken up,
+    # e.g.: d = {'le@@': 5, 'tt@@': 6, 'er': 7} => {'le': 5, 'tt': 6, 'er</w>': 7}
     d2 = dict((re.sub(r"@@$", "", k), v) if k.endswith("@@") else (re.sub(r"$", "</w>", k), v) for k, v in d.items())
     keep_keys = "<s> <pad> </s> <unk>".split()
     # restore the special tokens
@@ -55,7 +95,6 @@ def rewrite_dict_keys(d):
         del d2[f"{k}</w>"]
         d2[k] = d[k]  # restore
     return d2
-    # return dict((re.sub(r'@@', '</w>', k, 0, re.M), v) if k.endswith('@@') else (k, v) for k, v in d.items())
 
 
 def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder_path):
@@ -65,17 +104,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
     os.makedirs(pytorch_dump_folder_path, exist_ok=True)
     print(f"Writing results to {pytorch_dump_folder_path}")
 
-    # XXX: what about 2,3,4? need to merge the ensemble
-    # fsmt_checkpoint = os.path.join(fsmt_checkpoint_path, "model1.pt")
-    # chkpt = torch.load(fsmt_checkpoint, map_location="cpu")
-    # conf_orig = vars(chkpt["args"])
-
     # XXX: Need to work out the ensemble as fairseq does, for now using just one chkpt
-    # checkpoint_file='model1.pt:model2.pt:model3.pt:model4.pt'
-    # checkpoint_file='model1.pt'
-    # ru2en = torch.hub.load('pytorch/fairseq', fsmt_checkpoint_path, checkpoint_file=checkpoint_file, tokenizer='moses', bpe='fastbpe')
-    # ru2en = torch.hub.load('pytorch/fairseq', 'transformer.wmt19.ru-en', checkpoint_file=checkpoint_file, tokenizer='moses', bpe='fastbpe')
-
     # checkpoint_file = 'model1.pt:model2.pt:model3.pt:model4.pt'
     checkpoint_file = "model1.pt"
     # model_name_or_path = 'transformer.wmt19.ru-en'
@@ -184,16 +213,9 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         "model.decoder.version",
         "model.encoder_embed_tokens.weight",
         "model.decoder_embed_tokens.weight",
-        #        "model.encoder.embed_positions._float_tensor", # not storing model.encoder.embed_positions.weight
-        #        "model.decoder.embed_positions._float_tensor", # not storing model.decoder.embed_positions.weight
     ]
     for k in ignore_keys:
         model_state_dict.pop(k, None)
-
-    # XXX: emulate non-existing layer - perhaps it'll be removed instead in the model - for now just a bias of 0's
-    model_state_dict["final_logits_bias"] = torch.zeros(
-        (1, model_state_dict["model.decoder.embed_tokens.weight"].shape[0])
-    )
 
     # hf_checkpoint_name = "fsmt-wmt19-ru-en"
     config = FSMTConfig.from_pretrained(pytorch_dump_folder_path)
@@ -226,7 +248,6 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
             print("Models match perfectly! :)")
 
     compare_state_dicts(model_state_dict, test_state_dict)
-    # print(json.dumps(diff, indent=4))
 
 
 if __name__ == "__main__":

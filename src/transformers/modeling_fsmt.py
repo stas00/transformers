@@ -71,11 +71,21 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 # Porting notes:
 # this one is modeled after BartModel*
 #
+# Currently only translation (fairseq also has weights for LM)
+#
+# fairseq provides weights for ru-en, en-ru and de-en, en-de pairs. All have been ported.
+# - ru-en, en-ru use asymmetric vocab
+# - de-en, en-de use a merged single vocab (but the code works as if they are separate)
+#
 # Differences with Bart:
 # - not using bos token
 # - 2 separate vocabs (src and target)
 # - embed weights aren't tied
-# - uses a model Ensembe (but that part isn't implemented yet)
+# - uses a model Ensemble (but that part isn't ported/implemented yet) - so we
+#   aren't getting as good of a BLEU score
+# - uses a projection layer at the end of the decoder
+# - doesn't use final_logits_bias
+#
 #
 # SinusoidalPositionalEmbedding is slightly different from Bart's - generates
 # different embeddings. This implementation is copied verbatim from fairseq with
@@ -83,6 +93,81 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 #
 # Other changes:
 #  - doesn't support use_cache as Bart's version does
+
+"""
+
+Here is how to compare BLEU scores against fairseq implementation:
+
+# Note: to match fairseq params you need to set num_beams=50 in
+# `configuration_fsmt.py` and lower BS as it'll need more GPU memory
+
+cd examples/seq2seq
+
+# en-ru
+
+export PAIR=en-ru
+export DATA_DIR=data/$PAIR
+export SAVE_DIR=data/$PAIR
+export BS=8
+mkdir -p $DATA_DIR
+sacrebleu -t wmt19 -l $PAIR --echo src > $DATA_DIR/val.source
+sacrebleu -t wmt19 -l $PAIR --echo ref > $DATA_DIR/val.target
+echo $PAIR
+PYTHONPATH="../../src" python run_eval.py stas/fsmt-wmt19-$PAIR $DATA_DIR/val.source $SAVE_DIR/test_translations.txt --reference_path $DATA_DIR/val.target --score_path $SAVE_DIR/test_bleu.json --bs $BS --task translation
+
+# (fairseq BLEU: 36.4 http://matrix.statmt.org/matrix/output/1914?score_id=37605)
+
+
+
+
+# ru-en
+
+export PAIR=ru-en
+export DATA_DIR=data/$PAIR
+export SAVE_DIR=data/$PAIR
+export BS=8
+mkdir -p $DATA_DIR
+sacrebleu -t wmt19 -l $PAIR --echo src > $DATA_DIR/val.source
+sacrebleu -t wmt19 -l $PAIR --echo ref > $DATA_DIR/val.target
+echo $PAIR
+PYTHONPATH="../../src" python run_eval.py stas/fsmt-wmt19-$PAIR $DATA_DIR/val.source $SAVE_DIR/test_translations.txt --reference_path $DATA_DIR/val.target --score_path $SAVE_DIR/test_bleu.json --bs $BS --task translation
+
+# (fairseq BLEU: 41.3 http://matrix.statmt.org/matrix/output/1907?run_id=6937)
+
+
+
+
+# de-en
+
+export PAIR=de-en
+export DATA_DIR=data/$PAIR
+export SAVE_DIR=data/$PAIR
+export BS=8
+mkdir -p $DATA_DIR
+sacrebleu -t wmt19 -l $PAIR --echo src > $DATA_DIR/val.source
+sacrebleu -t wmt19 -l $PAIR --echo ref > $DATA_DIR/val.target
+echo $PAIR
+PYTHONPATH="../../src" python run_eval.py stas/fsmt-wmt19-$PAIR $DATA_DIR/val.source $SAVE_DIR/test_translations.txt --reference_path $DATA_DIR/val.target --score_path $SAVE_DIR/test_bleu.json --bs $BS --task translation
+
+# (fairseq BLEU: 42.3 http://matrix.statmt.org/matrix/output/1902?run_id=6750)
+
+
+
+# en-de
+
+export PAIR=en-de
+export DATA_DIR=data/$PAIR
+export SAVE_DIR=data/$PAIR
+export BS=8
+mkdir -p $DATA_DIR
+sacrebleu -t wmt19 -l $PAIR --echo src > $DATA_DIR/val.source
+sacrebleu -t wmt19 -l $PAIR --echo ref > $DATA_DIR/val.target
+echo $PAIR
+PYTHONPATH="../../src" python run_eval.py stas/fsmt-wmt19-$PAIR $DATA_DIR/val.source $SAVE_DIR/test_translations.txt --reference_path $DATA_DIR/val.target --score_path $SAVE_DIR/test_bleu.json --bs $BS --task translation
+
+# (fairseq BLEU: 43.1 http://matrix.statmt.org/matrix/output/1909?run_id=6862)
+
+"""
 
 
 FSMT_START_DOCSTRING = r"""
@@ -1005,15 +1090,12 @@ class FSMTModel(PretrainedFSMTModel):
 )
 class FSMTForConditionalGeneration(PretrainedFSMTModel):
     base_model_prefix = "model"
-    authorized_missing_keys = [r"final_logits_bias", r"encoder\.version", r"decoder\.version"]
+    authorized_missing_keys = [r"encoder\.version", r"decoder\.version"]
 
     def __init__(self, config: FSMTConfig):
         super().__init__(config)
         base_model = FSMTModel(config)
         self.model = base_model
-        # XXX: not in the original - do we need to remove it? or just use a bias of zeros?
-        # should the number of embeddings be of enc or dec? probably dec, as it's out?
-        self.register_buffer("final_logits_bias", torch.zeros((1, self.model.decoder.embed_tokens.num_embeddings)))
 
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
         old_num_tokens = self.model.encoder.embed_tokens.num_embeddings
@@ -1024,16 +1106,7 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
         self.model.decoder.embed_tokens = new_embeddings
 
-        self._resize_final_logits_bias(new_num_tokens, old_num_tokens)
         return new_embeddings
-
-    def _resize_final_logits_bias(self, new_num_tokens: int, old_num_tokens: int) -> None:
-        if new_num_tokens <= old_num_tokens:
-            new_bias = self.final_logits_bias[:, :new_num_tokens]
-        else:
-            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=self.final_logits_bias.device)
-            new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
-        self.register_buffer("final_logits_bias", new_bias)
 
     @add_start_docstrings_to_callable(FSMT_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Seq2SeqLMOutput, config_class=_CONFIG_FOR_DOC)
@@ -1098,8 +1171,6 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        # XXX: changed .shared to .decoder_embed_tokens
-        # lm_logits = F.linear(outputs[0], self.model.decoder.embed_tokens.weight, bias=self.final_logits_bias.squeeze())
         lm_logits = outputs[0]
 
         masked_lm_loss = None
