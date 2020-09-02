@@ -20,14 +20,12 @@ import unittest
 
 from transformers.testing_utils import slow
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES, FSMTTokenizer
+from transformers.file_utils import cached_property
 
 from .test_tokenization_common import TokenizerTesterMixin
 
 
 class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
-
-    __test__ = True
-
     tokenizer_class = FSMTTokenizer
 
     def setUp(self):
@@ -79,6 +77,14 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         with open(config_file, "w") as fp:
             fp.write(json.dumps(config))
 
+    @cached_property
+    def tokenizer_ru_en(self):
+        return FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-ru-en")
+
+    @cached_property
+    def tokenizer_en_ru(self):
+        return FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-en-ru")
+
     def test_full_tokenizer(self):
         """ Adapted from Sennrich et al. 2015 and https://github.com/rsennrich/subword-nmt """
         tokenizer = FSMTTokenizer(self.langs, self.src_vocab_file, self.tgt_vocab_file, self.merges_file)
@@ -94,7 +100,7 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
     @slow
     def test_sequence_builders(self):
-        tokenizer = FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-ru-en")
+        tokenizer = self.tokenizer_ru_en
 
         text = tokenizer.encode("sequence builders", add_special_tokens=False)
         text_2 = tokenizer.encode("multi-sequence build", add_special_tokens=False)
@@ -106,8 +112,9 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         assert encoded_pair == text + [2] + text_2 + [2]
 
     @slow
-    def test_match_encoding(self):
-        tokenizer = FSMTTokenizer.from_pretrained("stas/fsmt-wmt19-en-ru")
+    def test_match_encode_decode(self):
+        tokenizer_enc = self.tokenizer_en_ru
+        tokenizer_dec = self.tokenizer_ru_en
 
         targets = [
             [
@@ -117,19 +124,25 @@ class FSMTTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
             ["This is it. No more. I'm done!", [132, 21, 37, 7, 1434, 86, 7, 70, 6476, 1305, 427, 2]],
         ]
 
-        # these were added as different mismatches were found, to validate the targets (or create more inputs) run:
+        # this data was added as different mismatches were found, to validate
+        # the targets (or create more inputs if problems are found) run:
+        #
         # import torch
-        # for text, tgt_input_ids in targets:
+        # for src_text, _ in targets:
         #     mname = "transformer.wmt19.en-ru"
         #     checkpoint_file = "model1.pt"
         #     model = torch.hub.load(
         #         "pytorch/fairseq", mname, checkpoint_file=checkpoint_file, tokenizer="moses", bpe="fastbpe"
         #     )
-        #     encoded = model.encode(text)
-        #     print(f"""[\n"{text}",\n {encoded.tolist()}\n],""")
+        #     encoded = model.encode(src_text)
+        #     print(f"""[\n"{src_text}",\n {encoded.tolist()}\n],""")
 
-        for text, tgt_input_ids in targets:
-            input_ids = tokenizer.encode(text, return_tensors="pt")[0].tolist()
+        for src_text, tgt_input_ids in targets:
+            input_ids = tokenizer_enc.encode(src_text, return_tensors="pt")[0].tolist()
             print(input_ids)
             print(tgt_input_ids)
             self.assertListEqual(input_ids, tgt_input_ids)
+
+            # and decode backward, using the reversed languages model
+            decoded_text = tokenizer_dec.decode(input_ids, skip_special_tokens=True)
+            self.assertEqual(decoded_text, src_text)

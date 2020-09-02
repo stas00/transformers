@@ -71,9 +71,12 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 # Porting notes:
 # this one is modeled after BartModel*
 #
-#    Differences with Bart:
+# Differences with Bart:
+# - not using bos token
+# - 2 separate vocabs (src and target)
+# - embed weights aren't tied
+# - uses a model Ensembe (but that part isn't implemented yet)
 #
-
 # SinusoidalPositionalEmbedding is slightly different from Bart's - generates
 # different embeddings. This implementation is copied verbatim from fairseq with
 # some small changes to make it work here.
@@ -960,10 +963,6 @@ class FSMTModel(PretrainedFSMTModel):
             return_dict=return_dict,
         )
 
-        #        decoder_outputs = self.decoder.output_projection(decoder_outputs)
-        # XXX: need to sort out the output_projection bit - fairseq does it at transformer.py:676
-        # probably somewhere at the end of decoder()
-
         if not return_dict:
             return decoder_outputs + encoder_outputs
 
@@ -1123,8 +1122,6 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         }
 
     def adjust_logits_during_generation(self, logits, cur_len, max_length):
-        if cur_len == 1:
-            self._force_token_ids_generation(logits, self.config.bos_token_id)
         if cur_len == max_length - 1 and self.config.eos_token_id is not None:
             self._force_token_ids_generation(logits, self.config.eos_token_id)
         return logits
@@ -1163,7 +1160,7 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
 
     def get_output_embeddings(self):
         return self.model.decoder.embed_tokens
-        # XXX: it was, but probably not needed here
+        # XXX: it was, but probably is not needed here
         # return _make_linear_from_emb(self.decoder.embed_tokens)  # make it on the fly
 
 

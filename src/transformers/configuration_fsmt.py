@@ -57,7 +57,7 @@ class FSMTConfig(PretrainedConfig):
         activation_function="relu",  # changed
         num_labels=3,
         d_model=1024,
-        max_length=256,
+        max_length=200,
         num_beams=8,
         max_position_embeddings=1024,
         extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?

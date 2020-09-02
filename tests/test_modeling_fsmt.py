@@ -418,7 +418,7 @@ class FSMTModelIntegrationTests(unittest.TestCase):
         text = {
             "en": "Machine learning is great, isn't it?",
             "ru": "Машинное обучение - это здорово, не так ли?",
-            "de": "Maschinelles Lernen ist doch toll, oder?",
+            "de": "Maschinelles Lernen ist großartig, oder?",
         }
 
         pairs = [
