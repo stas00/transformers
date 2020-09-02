@@ -2,7 +2,7 @@
 # There's no way to ignore "F401 '...' imported but unused" warnings in this
 # module, but to preserve other warnings. So, don't check this module at all.
 
-__version__ = "3.0.2"
+__version__ = "3.1.0"
 
 # Work around to update TensorFlow's absl.logging threshold which alters the
 # default Python logging output behavior when present.
@@ -127,6 +127,7 @@ from .pipelines import (
     PipelineDataFormat,
     QuestionAnsweringPipeline,
     SummarizationPipeline,
+    Text2TextGenerationPipeline,
     TextClassificationPipeline,
     TextGenerationPipeline,
     TokenClassificationPipeline,
@@ -426,6 +427,7 @@ if is_torch_available():
     )
     from .modeling_xlm_roberta import (
         XLM_ROBERTA_PRETRAINED_MODEL_ARCHIVE_LIST,
+        XLMRobertaForCausalLM,
         XLMRobertaForMaskedLM,
         XLMRobertaForMultipleChoice,
         XLMRobertaForQuestionAnswering,
