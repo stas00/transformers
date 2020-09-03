@@ -85,7 +85,11 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 #   aren't getting as good of a BLEU score
 # - uses a projection layer at the end of the decoder
 # - doesn't use final_logits_bias
-#
+# - beam search: stops as soon as num_beams == len(hypos) (whereas transformers
+#   is not satisfied there and will continue searching until the next cycles
+#   aren't promising something better), comparing BLEU scores - the transformers
+#   algorithm is slightly superior, therefore using the latter. But if you want
+#   to match fairseq outputs, you need to pass ``early_stopping=True`` to ``generate()``.
 #
 # SinusoidalPositionalEmbedding is slightly different from Bart's - generates
 # different embeddings. This implementation is copied verbatim from fairseq with
@@ -93,6 +97,11 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 #
 # Other changes:
 #  - doesn't support use_cache as Bart's version does
+#
+# TODO:
+# - port model ensemble (fs uses 4 model checkpoints)
+# - solve beam search discrepancies
+#
 
 """
 

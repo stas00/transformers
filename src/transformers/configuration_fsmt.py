@@ -18,7 +18,7 @@
 import logging
 
 from .configuration_utils import PretrainedConfig
-
+from .file_utils import add_start_docstrings_to_callable
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,70 @@ FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
 }
 
 
+FSMT_CONFIG_ARGS_DOC = r"""
+    Args:
+        src_vocab_size (:obj:`int`, optional, defaults to None):
+            defines the different tokens that can be represented by `inputs_ids` passed to the forward
+            method in the encoder.
+        tgt_vocab_size (:obj:`int`, optional, defaults to None):
+            defines the different tokens that can be represented by `inputs_ids` passed to the forward
+            method in the decoder.
+        d_model (:obj:`int`, optional, defaults to 1024):
+            Dimensionality of the layers and the pooler layer.
+        encoder_layers (:obj:`int`, optional, defaults to 12):
+            Number of encoder layers, 16 for pegasus, 6 for bart-base and marian
+        decoder_layers (:obj:`int`, optional, defaults to 12):
+            Number of decoder layers, 16 for pegasus, 6 for bart-base and marian
+        encoder_attention_heads (:obj:`int`, optional, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        decoder_attention_heads (:obj:`int`, optional, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer decoder.
+        decoder_ffn_dim (:obj:`int`, optional, defaults to 4096):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in decoder.
+        encoder_ffn_dim (:obj:`int`, optional, defaults to 4096):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in decoder.
+        activation_function (:obj:`str` or :obj:`function`, optional, defaults to "relu"):
+            The non-linear activation function (function or string) in the encoder and pooler.
+            If string, "gelu", "relu", "swish" and "gelu_new" are supported.
+        dropout (:obj:`float`, optional, defaults to 0.1):
+            The dropout probabilitiy for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_dropout (:obj:`float`, optional, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        activation_dropout (:obj:`float`, optional, defaults to 0.0):
+            The dropout ratio for activations inside the fully connected layer.
+        max_position_embeddings (:obj:`int`, optional, defaults to 1024):
+            The maximum sequence length that this model might ever be used with.
+            Typically set this to something large just in case (e.g., 512 or 1024 or 2048).
+        init_std (:obj:`float`, optional, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        add_bias_logits (:obj:`bool`, optional, defaults to False):
+            True for marian only.
+        normalize_before (:obj:`bool`, optional, defaults to False):
+            Call layernorm before attention ops.
+        normalize_embedding (:obj:`bool`, optional, defaults to False):
+            Call layernorm after embeddings.
+        static_position_embeddings (:obj:`bool`, optional, defaults to True):
+            Don't learn positional embeddings, use sinusoidal.
+        add_final_layer_norm (:obj:`bool`, optional, defaults to False):
+            Why not add another layernorm?
+        scale_embedding (:obj:`bool`, optional, defaults to True):
+            Scale embeddings by diving by sqrt(d_model).
+        bos_token_id (:obj:`int`, optional, defaults to 0)
+            Beginning of stream token id.
+        pad_token_id (:obj:`int`, optional, defaults to 1)
+            Padding token id.
+        eos_token_id (:obj:`int`, optional, defaults to 2)
+            End of stream token id.
+        encoder_layerdrop: (:obj:`float`, optional, defaults to 0.0):
+            Google "layerdrop arxiv", as its not explainable in one line.
+        decoder_layerdrop: (:obj:`float`, optional, defaults to 0.0):
+            Google "layerdrop arxiv", as its not explainable in one line.
+        is_encoder_decoder (:obj:`bool`, optional, defaults to True):
+            Whether this is an encoder/decoder model.
+        tie_word_embeddings (:obj:`bool`, optional, defaults to False):
+            Whether to tie input and output embeddings.
+"""
+
 # Porting notes:
 # this one is modeled after BartConfig
 #
@@ -38,6 +102,8 @@ FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
 #    - token embeddings aren't shared
 #    - needs a language pair
 #
+
+@add_start_docstrings_to_callable(FSMT_CONFIG_ARGS_DOC)
 class FSMTConfig(PretrainedConfig):
     r"""
         Configuration class for FSMT. Parameters are renamed from the fairseq implementation
@@ -51,16 +117,13 @@ class FSMTConfig(PretrainedConfig):
     # update the defaults from config file
     def __init__(
         self,
-        src_vocab_size=None,  # new
-        tgt_vocab_size=None,  # new
-        langs=None,  # new
-        activation_function="relu",  # changed
-        num_labels=3,
+        src_vocab_size=None,
+        tgt_vocab_size=None,
+        activation_function="relu",
         d_model=1024,
         max_length=200,
         num_beams=8,
         max_position_embeddings=1024,
-        extra_pos_embeddings=2,  # FIXME(@sshleifer): delete? # XXX: sshleifer said might need to turn it off?
         encoder_ffn_dim=4096,
         encoder_layers=12,
         encoder_attention_heads=16,
@@ -73,7 +136,6 @@ class FSMTConfig(PretrainedConfig):
         dropout=0.1,
         activation_dropout=0.0,
         init_std=0.02,
-        classifier_dropout=0.0,
         pad_token_id=1,
         bos_token_id=0,
         eos_token_id=2,
@@ -101,7 +163,6 @@ class FSMTConfig(PretrainedConfig):
         if "hidden_size" in common_kwargs:
             raise ValueError("hidden size is called d_model")
         super().__init__(
-            num_labels=num_labels,
             pad_token_id=pad_token_id,
             bos_token_id=bos_token_id,
             eos_token_id=eos_token_id,

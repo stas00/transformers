@@ -113,6 +113,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
     models = cls.hub_models()
     kwargs = {"bpe": "fastbpe", "tokenizer": "moses"}
 
+    # note: there is some magic happening here, so can't use torch.load() directly on the model file
     chkpt = hub_utils.from_pretrained(
         fsmt_checkpoint_path, checkpoint_file, data_name_or_path, archive_map=models, **kwargs
     )
