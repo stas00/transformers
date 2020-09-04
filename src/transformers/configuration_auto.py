@@ -29,6 +29,7 @@ from .configuration_flaubert import FLAUBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, Flau
 from .configuration_fsmt import FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP, FSMTConfig
 from .configuration_gpt2 import GPT2_PRETRAINED_CONFIG_ARCHIVE_MAP, GPT2Config
 from .configuration_longformer import LONGFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP, LongformerConfig
+from .configuration_lxmert import LXMERT_PRETRAINED_CONFIG_ARCHIVE_MAP, LxmertConfig
 from .configuration_marian import MarianConfig
 from .configuration_mbart import MBART_PRETRAINED_CONFIG_ARCHIVE_MAP, MBartConfig
 from .configuration_mobilebert import MobileBertConfig
@@ -68,6 +69,7 @@ ALL_PRETRAINED_CONFIG_ARCHIVE_MAP = dict(
         ELECTRA_PRETRAINED_CONFIG_ARCHIVE_MAP,
         LONGFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP,
         RETRIBERT_PRETRAINED_CONFIG_ARCHIVE_MAP,
+        LXMERT_PRETRAINED_CONFIG_ARCHIVE_MAP,
     ]
     for key, value, in pretrained_map.items()
 )
@@ -171,6 +173,10 @@ CONFIG_MAPPING = OrderedDict(
         (
             "encoder-decoder",
             EncoderDecoderConfig,
+        ),
+        (
+            "lxmert",
+            LxmertConfig,
         ),
     ]
 )
