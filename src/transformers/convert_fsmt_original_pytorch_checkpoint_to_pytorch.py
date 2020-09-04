@@ -12,9 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Convert fairseq transform wmt19 checkpoint."""
-
 """
+
+Convert fairseq transform wmt19 checkpoint.
+
 To convert run:
 assuming the fairseq data is under data/wmt19.ru-en.ensemble, data/wmt19.en-ru.ensemble, etc
 
@@ -56,6 +57,9 @@ transformers-cli upload fsmt-wmt19-de-en
 transformers-cli upload fsmt-wmt19-en-de
 cd -
 
+# force cache invalidation, which will now download the new models
+PYTHONPATH="src" python -c 'from transformers import AutoModel; [AutoModel.from_pretrained("stas/fsmt-wmt19-"+p, use_cdn=False) for p in ["en-ru","ru-en","en-de","de-en"]]'
+
 # happy translations
 
 """
@@ -66,6 +70,7 @@ import logging
 import os
 import re
 from collections import OrderedDict
+from os.path import basename, dirname
 
 import fairseq
 import torch
@@ -74,7 +79,7 @@ from fairseq.data.dictionary import Dictionary
 
 from transformers import WEIGHTS_NAME
 from transformers.configuration_fsmt import FSMTConfig
-from transformers.modeling_fsmt import FSMTForConditionalGeneration
+from transformers.modeling_fsmt import FSMTForConditionalGeneration, get_authorized_missing_keys
 from transformers.tokenization_fsmt import VOCAB_FILES_NAMES
 
 
@@ -97,6 +102,118 @@ def rewrite_dict_keys(d):
     return d2
 
 
+def write_model_card(model_card_dir, src_lang, tgt_lang):
+
+    texts = {
+        "en": "Machine learning is great, isn't it?",
+        "ru": "Машинное обучение - это здорово, не так ли?",
+        "de": "Maschinelles Lernen ist großartig, oder?",
+    }
+
+    # BLUE scores as follows:
+    # "pair": [fairseq, transformers]
+    scores = {
+        "en-ru": ["[36.4](http://matrix.statmt.org/matrix/output/1914?run_id=6724)", "31.2695"],
+        "ru-en": ["[41.3](http://matrix.statmt.org/matrix/output/1907?run_id=6937)", "38.8524"],
+        "de-en": ["[42.3](http://matrix.statmt.org/matrix/output/1902?run_id=6750)", "39.4278"],
+        "en-de": ["[43.1](http://matrix.statmt.org/matrix/output/1909?run_id=6862)", "41.0814"],
+    }
+    pair = f"{src_lang}-{tgt_lang}"
+
+    readme = f"""
+---
+language: {src_lang}, {tgt_lang}
+thumbnail:
+tags:
+- translation
+- wmt19
+license: Apache 2.0
+datasets:
+- http://www.statmt.org/wmt19/ ([test-set](http://matrix.statmt.org/test_sets/newstest2019.tgz?1556572561))
+metrics:
+- http://www.statmt.org/wmt19/metrics-task.html
+---
+
+# FSMT
+
+## Model description
+
+This is a ported version of [fairseq wmt19 transformer](https://github.com/pytorch/fairseq/blob/master/examples/wmt19/README.md) for {src_lang}-{tgt_lang}.
+
+For more details, please see, [Facebook FAIR's WMT19 News Translation Task Submission](https://arxiv.org/abs/1907.06616).
+
+The abbreviation FSMT stands for FairSeqMachineTranslation
+
+All four models are available:
+
+* [fsmt-wmt19-en-ru](https://huggingface.co/stas/fsmt-wmt19-en-ru)
+* [fsmt-wmt19-ru-en](https://huggingface.co/stas/fsmt-wmt19-ru-en)
+* [fsmt-wmt19-en-de](https://huggingface.co/stas/fsmt-wmt19-en-de)
+* [fsmt-wmt19-de-en](https://huggingface.co/stas/fsmt-wmt19-de-en)
+
+## Intended uses & limitations
+
+#### How to use
+
+```python
+from transformers.tokenization_fsmt import FSMTTokenizer
+from transformers.modeling_fsmt import FSMTForConditionalGeneration
+mname = "fsmt-wmt19-{src_lang}-{tgt_lang}"
+tokenizer = FSMTTokenizer.from_pretrained(mname)
+model = FSMTForConditionalGeneration.from_pretrained(mname)
+
+pair = ["{src_lang}", "{tgt_lang}"]
+input = "{texts[src_lang]}
+
+input_ids = tokenizer.encode(input, return_tensors="pt")
+outputs = model.generate(input_ids)
+decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+print(decoded) # {texts[tgt_lang]}
+
+```
+
+#### Limitations and bias
+
+- The original (and this ported model) doesn't seem to handle well inputs with repeated sub-phrases, [content gets truncated](https://discuss.huggingface.co/t/issues-with-translating-inputs-containing-repeated-phrases/981)
+
+## Training data
+
+Pretrained weights were left identical to the original model released by fairseq. For more details, please, see the [paper](https://arxiv.org/abs/1907.06616)
+
+## Eval results
+
+Fairseq reported score is { scores[pair][0] }
+
+The porting of this model is still in progress, but so far we have the following BLEU score: { scores[pair][1] }
+
+The score was calculated using this code:
+
+```python
+git clone https://github.com/huggingface/transformers
+cd transformers
+cd examples/seq2seq
+export PAIR={pair}
+export DATA_DIR=data/$PAIR
+export SAVE_DIR=data/$PAIR
+export BS=8
+mkdir -p $DATA_DIR
+sacrebleu -t wmt19 -l $PAIR --echo src > $DATA_DIR/val.source
+sacrebleu -t wmt19 -l $PAIR --echo ref > $DATA_DIR/val.target
+echo $PAIR
+PYTHONPATH="../../src" python run_eval.py stas/fsmt-wmt19-$PAIR $DATA_DIR/val.source $SAVE_DIR/test_translations.txt --reference_path $DATA_DIR/val.target --score_path $SAVE_DIR/test_bleu.json --bs $BS --task translation
+```
+
+## TODO
+
+- port model ensemble (fairseq uses 4 model checkpoints)
+
+"""
+    os.makedirs(model_card_dir, exist_ok=True)
+    path = os.path.join(model_card_dir, "README.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(readme)
+
+
 def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder_path):
 
     # prep
@@ -114,6 +231,7 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
     kwargs = {"bpe": "fastbpe", "tokenizer": "moses"}
 
     # note: there is some magic happening here, so can't use torch.load() directly on the model file
+    # see: load_state_dict() in fairseq_model.py
     chkpt = hub_utils.from_pretrained(
         fsmt_checkpoint_path, checkpoint_file, data_name_or_path, archive_map=models, **kwargs
     )
@@ -122,6 +240,10 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
 
     src_lang = args["source_lang"]
     tgt_lang = args["target_lang"]
+
+    data_root = dirname(pytorch_dump_folder_path)
+    model_dir = basename(pytorch_dump_folder_path)
+    proj_root = dirname(dirname(dirname(os.path.realpath(__file__))))
 
     # dicts
     src_dict_file = os.path.join(fsmt_checkpoint_path, f"dict.{src_lang}.txt")
@@ -215,15 +337,16 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
         "model.encoder_embed_tokens.weight",
         "model.decoder_embed_tokens.weight",
     ]
+    # let's save a lot of space, by not saving unneeded keys - lots of them!
+    ignore_keys.extend(get_authorized_missing_keys())
     for k in ignore_keys:
         model_state_dict.pop(k, None)
 
-    # hf_checkpoint_name = "fsmt-wmt19-ru-en"
     config = FSMTConfig.from_pretrained(pytorch_dump_folder_path)
     model_new = FSMTForConditionalGeneration(config)
 
     # check that it loads ok
-    model_new.load_state_dict(model_state_dict)
+    model_new.load_state_dict(model_state_dict, strict=False)
 
     # save
     pytorch_weights_dump_path = os.path.join(pytorch_dump_folder_path, WEIGHTS_NAME)
@@ -249,6 +372,17 @@ def convert_fsmt_checkpoint_to_pytorch(fsmt_checkpoint_path, pytorch_dump_folder
             print("Models match perfectly! :)")
 
     compare_state_dicts(model_state_dict, test_state_dict)
+
+    # model card
+    model_card_dir = os.path.join(proj_root, "model_cards", "stas", model_dir)
+    print(f"Generating model_card {src_lang}-{tgt_lang}")
+    write_model_card(model_card_dir, src_lang, tgt_lang)
+
+    print("Conversion is done!")
+    print("\nLast step is to upload the files to s3")
+    print(f"cd {data_root}")
+    print(f"transformers-cli upload {model_dir}")
+    print(f"Note: CDN caches files for up to 24h, so use `from_pretrained(mname, use_cdn=False)` to force redownload")
 
 
 if __name__ == "__main__":

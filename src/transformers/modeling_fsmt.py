@@ -101,7 +101,9 @@ FSMT_PRETRAINED_MODEL_ARCHIVE_LIST = [
 # TODO:
 # - port model ensemble (fs uses 4 model checkpoints)
 # - solve beam search discrepancies
-#
+# - There are keys in the state_dict that don't need to be saved, see the
+#   conversion script (get_authorized_missing_keys()), so need to ensure that if
+#   someone does further work with the weights they don't save those keys
 
 """
 
@@ -1094,12 +1096,25 @@ class FSMTModel(PretrainedFSMTModel):
         self.decoder.embed_tokens = value  # self.decoder_embed_tokens = value
 
 
+def get_authorized_missing_keys():
+    missing_keys = [r"encoder\.version", r"decoder\.version"]
+
+    # these are 90 dict entries that aren't needed to be saved (they aren't in the original saved weights)
+    postfices = [fr"{x}.{y}" for x in ["k_proj", "v_proj", "q_proj"] for y in ["weight", "bias"]]
+    self_attn_keys = [
+        fr"model.{x}.layers.{y}.self_attn.{z}" for x in ["encoder", "decoder"] for y in range(1, 6) for z in postfices
+    ]
+    encoder_attn_keys = [fr"model.decoder.layers.{y}.encoder_attn.{z}" for y in range(1, 6) for z in postfices]
+    missing_keys += self_attn_keys + encoder_attn_keys
+    return missing_keys
+
+
 @add_start_docstrings(
     "The FSMT Model with a language modeling head. Can be used for summarization.", FSMT_START_DOCSTRING
 )
 class FSMTForConditionalGeneration(PretrainedFSMTModel):
     base_model_prefix = "model"
-    authorized_missing_keys = [r"encoder\.version", r"decoder\.version"]
+    authorized_missing_keys = get_authorized_missing_keys()
 
     def __init__(self, config: FSMTConfig):
         super().__init__(config)
@@ -1107,14 +1122,14 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
         self.model = base_model
 
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
-        old_num_tokens = self.model.encoder.embed_tokens.num_embeddings
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
         self.model.encoder.embed_tokens = new_embeddings
 
-        old_num_tokens = self.model.decoder.embed_tokens.num_embeddings
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
         self.model.decoder.embed_tokens = new_embeddings
 
+        # XXX: this is not quite correct, as we have 2 different
+        # `new_embeddings`, and only one return value is expected.
         return new_embeddings
 
     @add_start_docstrings_to_callable(FSMT_INPUTS_DOCSTRING)
@@ -1203,7 +1218,9 @@ class FSMTForConditionalGeneration(PretrainedFSMTModel):
             encoder_attentions=outputs.encoder_attentions,
         )
 
-    def prepare_inputs_for_generation(self, decoder_input_ids, past, attention_mask, use_cache, encoder_outputs, **kwargs):
+    def prepare_inputs_for_generation(
+        self, decoder_input_ids, past, attention_mask, use_cache, encoder_outputs, **kwargs
+    ):
         return {
             "input_ids": None,  # encoder_outputs is defined. input_ids not needed
             "encoder_outputs": encoder_outputs,
@@ -1274,7 +1291,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
         self.weights = SinusoidalPositionalEmbedding.get_embedding(init_size, embedding_dim, padding_idx)
-        self.register_buffer("_float_tensor", torch.zeros(1)) # used for getting the right device
+        self.register_buffer("_float_tensor", torch.zeros(1))  # used for getting the right device
         self.max_positions = int(1e5)
 
     # XXX: bart uses s/num_embeddings/num_positions/, s/weights/weight/ - could make those match

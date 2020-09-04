@@ -20,6 +20,7 @@ import logging
 from .configuration_utils import PretrainedConfig
 from .file_utils import add_start_docstrings_to_callable
 
+
 logger = logging.getLogger(__name__)
 
 FSMT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
@@ -101,7 +102,12 @@ FSMT_CONFIG_ARGS_DOC = r"""
 #    - src/tgt vocabs aren't shared
 #    - token embeddings aren't shared
 #    - needs a language pair
+#    - scale_embedding are True
+#    - normalize_embedding are False
+#    - static_position_embeddings are True
 #
+#    some unused args were removed too
+
 
 @add_start_docstrings_to_callable(FSMT_CONFIG_ARGS_DOC)
 class FSMTConfig(PretrainedConfig):
