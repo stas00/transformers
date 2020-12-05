@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -18,6 +18,7 @@ from transformers.optimization import (
     get_polynomial_decay_schedule_with_warmup,
 )
 from transformers.trainer_pt_utils import get_tpu_sampler
+from transformers.training_args import ParallelMode
 
 
 logger = logging.get_logger(__name__)
@@ -122,7 +123,8 @@ class Seq2SeqTrainer(Trainer):
         else:
             if self.args.sortish_sampler:
                 self.train_dataset.make_sortish_sampler(
-                    self.args.per_device_train_batch_size, distributed=self.args.n_gpu > 1
+                    self.args.per_device_train_batch_size,
+                    distributed=(self.args.parallel_mode == ParallelMode.DISTRIBUTED),
                 )
 
             return (
@@ -153,7 +155,11 @@ class Seq2SeqTrainer(Trainer):
         return loss
 
     def prediction_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], prediction_loss_only: bool
+        self,
+        model: nn.Module,
+        inputs: Dict[str, Union[torch.Tensor, Any]],
+        prediction_loss_only: bool,
+        ignore_keys: Optional[List[str]] = None,
     ) -> Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]:
         """
         Perform an evaluation step on :obj:`model` using obj:`inputs`.
@@ -185,7 +191,7 @@ class Seq2SeqTrainer(Trainer):
         }
 
         if self.args.predict_with_generate and not self.args.prediction_loss_only:
-            generated_tokens = model.generate(
+            generated_tokens = self.model.generate(
                 inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
                 **gen_kwargs,
