@@ -577,9 +577,9 @@ class TFBartDecoder(tf.keras.layers.Layer):
             encoder_padding_mask = invert_mask(encoder_padding_mask)
 
         # embed positions
-        positions = self.embed_positions(input_ids, use_cache=use_cache)
+        positions = self.embed_positions(input_ids, use_cache=(use_cache and decoder_cached_states is not None))
 
-        if use_cache:
+        if use_cache and decoder_cached_states is not None:
             input_ids = input_ids[:, -1:]
             positions = positions[:, -1:]
 
@@ -876,6 +876,8 @@ class TFSinusoidalPositionalEmbedding(tf.keras.layers.Embedding):
 )
 @keras_serializable
 class TFBartModel(TFPretrainedBartModel):
+    base_model_prefix = "model"
+
     def __init__(self, config: BartConfig, *inputs, **kwargs):
         super().__init__(config, *inputs, **kwargs)
         self.shared = TFSharedEmbeddings(config.vocab_size, config.d_model, config.pad_token_id, name="model.shared")
@@ -962,7 +964,7 @@ class TFBartModel(TFPretrainedBartModel):
             else self.config.output_hidden_states
         )
 
-        if not inputs["use_cache"]:
+        if not use_cache or past_key_values is None:
             inputs["decoder_input_ids"], decoder_padding_mask, causal_mask = self._prepare_bart_decoder_inputs(
                 inputs["input_ids"],
                 decoder_input_ids=inputs["decoder_input_ids"],
@@ -1033,10 +1035,6 @@ class TFBartModel(TFPretrainedBartModel):
     BART_START_DOCSTRING,
 )
 class TFBartForConditionalGeneration(TFPretrainedBartModel):
-    base_model_prefix = "model"
-    _keys_to_ignore_on_load_missing = [
-        r"final_logits_bias",
-    ]
     _keys_to_ignore_on_load_unexpected = [
         r"model.encoder.embed_tokens.weight",
         r"model.decoder.embed_tokens.weight",
@@ -1156,6 +1154,7 @@ class TFBartForConditionalGeneration(TFPretrainedBartModel):
             assert (
                 decoder_cached_states
             ), f"decoder cached states must be truthy. got {decoder_cached_states} from the 2nd element of past"
+
         assert isinstance(
             encoder_outputs, TFBaseModelOutput
         ), f"encoder_outputs should be a TFBaseModelOutput, Instead got {type(encoder_outputs)}."

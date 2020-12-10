@@ -1,3 +1,17 @@
+# Copyright 2020 The HuggingFace Team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 from numpy import ndarray
@@ -43,7 +57,7 @@ class FlaxRobertaModelTest(unittest.TestCase):
                 self.assertEqual(len(fx_outputs), len(pt_outputs), "Output lengths differ between Flax and PyTorch")
 
                 for fx_output, pt_output in zip(fx_outputs, pt_outputs.to_tuple()):
-                    self.assert_almost_equals(fx_output, pt_output.numpy(), 6e-4)
+                    self.assert_almost_equals(fx_output, pt_output.numpy(), 5e-3)
 
     def test_multiple_sequences(self):
         tokenizer = RobertaTokenizerFast.from_pretrained("roberta-base")
