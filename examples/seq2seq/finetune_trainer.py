@@ -26,6 +26,7 @@ from utils import (
     write_txt_file,
 )
 
+#import deepspeed
 
 logger = logging.getLogger(__name__)
 
@@ -113,12 +114,30 @@ def main():
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
 
+
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        ds_args = {} # XXX
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args, remaining_args = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+        from pprint import pprint
+        
+        # XXX: breaks parse_args_into_dataclasses
+        import deepspeed
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser = deepspeed.add_config_arguments(parser)
+        #remaining_args += ['--local_rank', training_args.local_rank]
+        pprint(remaining_args)
+        ds_args, _ = parser.parse_known_args(args=remaining_args)
+        #pprint(ds_args)
+        pprint(training_args.local_rank)
+        ds_args.local_rank = training_args.local_rank
+        pprint(ds_args)
+        #die
+
 
     check_output_dir(training_args)
 
@@ -250,6 +269,7 @@ def main():
         data_collator=Seq2SeqDataCollator(tokenizer, data_args, training_args.tpu_num_cores),
         compute_metrics=compute_metrics_fn,
         data_args=data_args,
+        ds_args=ds_args,
     )
 
     # Training

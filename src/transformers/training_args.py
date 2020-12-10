@@ -432,6 +432,7 @@ class TrainingArguments:
     @torch_required
     def _setup_devices(self) -> Tuple["torch.device", int]:
         logger.info("PyTorch: setting up devices")
+
         if self.no_cuda:
             device = torch.device("cpu")
             n_gpu = 0
@@ -450,9 +451,10 @@ class TrainingArguments:
         else:
             # Here, we'll use torch.distributed.
             # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
-            torch.distributed.init_process_group(backend="nccl")
+            #torch.distributed.init_process_group(backend="nccl")
             device = torch.device("cuda", self.local_rank)
             n_gpu = 1
+            #device = torch.device("cuda:0")
 
         if device.type == "cuda":
             torch.cuda.set_device(device)

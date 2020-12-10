@@ -25,6 +25,7 @@ import shutil
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+import deepspeed
 
 
 # Integrations must be imported before ML frameworks:
@@ -219,6 +220,7 @@ class Trainer:
         self,
         model: Union[PreTrainedModel, torch.nn.Module] = None,
         args: TrainingArguments = None,
+        ds_args = None,
         data_collator: Optional[DataCollator] = None,
         train_dataset: Optional[Dataset] = None,
         eval_dataset: Optional[Dataset] = None,
@@ -242,6 +244,23 @@ class Trainer:
         if model is None and model_init is not None:
             model = self.call_model_init()
 
+        # ds
+        optimizer, lr_scheduler = optimizers
+        
+        # optimizer, lr_scheduler = optimizers
+        model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+        model, optimizer, training_dataloader, lr_scheduler = deepspeed.initialize(
+            args=ds_args,
+            model=model,
+            model_parameters=model_parameters,
+            #optimizer=optimizer,
+            lr_scheduler=lr_scheduler,
+            #training_data=trainset,
+        )
+
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
+
         # Model parallel
         if model is not None and not self.args.model_parallel:
             model = model.to(args.device)
@@ -254,7 +273,6 @@ class Trainer:
         self.tokenizer = tokenizer
 
         self.compute_metrics = compute_metrics
-        self.optimizer, self.lr_scheduler = optimizers
         if model_init is not None and (self.optimizer is not None or self.lr_scheduler is not None):
             raise RuntimeError(
                 "Passing a `model_init` is incompatible with providing the `optimizers` argument."
@@ -616,6 +634,7 @@ class Trainer:
             num_train_epochs = 1
             num_update_steps_per_epoch = max_steps
 
+        # ds
         self.create_optimizer_and_scheduler(num_training_steps=max_steps)
         self.state = TrainerState()
         self.state.is_hyper_param_search = trial is not None
