@@ -349,7 +349,19 @@ def main():
             # For convenience, we also re-save the tokenizer to the same directory,
             # so that you can share your model easily on huggingface.co/models =)
             tokenizer.save_pretrained(training_args.output_dir)
-
+            
+            result = {}
+            seconds_per_sample = runtime / data_args.n_train
+            result["seconds_per_sample"] = round(seconds_per_sample, 4)
+            result["iterations_per_second"] = round(1/seconds_per_sample, 2)
+            result["runtime"] = round(runtime, 4)
+            
+            result["n_ojbs"] = data_args.n_train
+            logger.info("***** Train results *****")
+            for key, value in result.items():
+                logger.info("  %s = %s", key, value)
+            save_json(result, os.path.join(training_args.output_dir, "train_results.json"))
+            
     # Evaluation
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
@@ -359,6 +371,8 @@ def main():
         metrics.update(speed_metrics("val", start_time, data_args.n_val))
         metrics["val_loss"] = round(metrics["val_loss"], 4)
 
+        runtime = time.time() - t0
+        
         if trainer.is_world_process_zero():
 
             handle_metrics("val", metrics, training_args.output_dir)

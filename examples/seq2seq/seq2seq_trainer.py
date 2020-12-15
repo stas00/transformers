@@ -88,6 +88,7 @@ class Seq2SeqTrainer(Trainer):
         Trainer's init through :obj:`optimizers`, or subclass and override this method in a subclass.
         """
         if self.optimizer is None:
+            die
             no_decay = ["bias", "LayerNorm.weight"]
             optimizer_grouped_parameters = [
                 {
@@ -113,6 +114,7 @@ class Seq2SeqTrainer(Trainer):
                 )
 
         if self.lr_scheduler is None:
+            die
             self.lr_scheduler = self._get_lr_scheduler(num_training_steps)
         else:  # ignoring --lr_scheduler
             logger.warn("scheduler is passed to `Seq2SeqTrainer`, `--lr_scheduler` arg is ignored.")

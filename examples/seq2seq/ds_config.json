@@ -4,13 +4,21 @@
    "optimizer": {
      "type": "Adam",
      "params": {
-       "lr": 0.001,
+       "lr": 3e-5,
        "betas": [
          0.8,
          0.999
        ],
        "eps": 1e-8,
        "weight_decay": 3e-7
+     }
+   },
+   "scheduler": {
+     "type": "WarmupLR",
+     "params": {
+       "warmup_min_lr": 0,
+       "warmup_max_lr": 3e-5,
+       "warmup_num_steps": 500
      }
    },
    "wall_clock_breakdown": false

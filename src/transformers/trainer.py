@@ -254,12 +254,15 @@ class Trainer:
             model=model,
             model_parameters=model_parameters,
             #optimizer=optimizer,
-            lr_scheduler=lr_scheduler,
+            #lr_scheduler=lr_scheduler,
             #training_data=trainset,
         )
 
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        from pprint import pprint
+        pprint(optimizer)
+        pprint(lr_scheduler)
 
         # Model parallel
         if model is not None and not self.args.model_parallel:
