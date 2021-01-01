@@ -1050,7 +1050,7 @@ class GenerationMixin:
                 next_token_logits, cur_len=cur_len, max_length=max_length
             )
 
-            next_token_scores = F.log_softmax(next_token_logits, dim=-1).to("cuda:0")  # (batch_size * num_beams, vocab_size)
+            next_token_scores = F.log_softmax(next_token_logits, dim=-1)  # (batch_size * num_beams, vocab_size)
 
             next_token_scores = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
@@ -1084,7 +1084,6 @@ class GenerationMixin:
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
-            
             if model_kwargs["past"] is not None:
                 model_kwargs["past"] = self._reorder_cache(model_kwargs["past"], beam_idx)
 

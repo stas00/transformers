@@ -42,7 +42,7 @@ from ...modeling_outputs import (
 )
 from ...modeling_utils import PreTrainedModel
 from ...utils import logging
-from ...utils.model_parallel_utils import init_device_map, model_parallel_inputs_to_device, to_dev, model_parallel_inputs_to_specific_device
+from ...utils.model_parallel_utils import init_device_map, model_parallel_inputs_to_device, model_parallel_inputs_to_specific_device
 from .configuration_bart import BartConfig
 
 from ...utils.model_parallel_utils import log_name_device
@@ -347,7 +347,7 @@ class BartEncoderLayer(nn.Module):
     def deparallelize(self):
         self.to("cpu")
         self.model_parallel = False
-        
+
     @model_parallel_inputs_to_device
     def forward(self, hidden_states: torch.Tensor, attention_mask: torch.Tensor, output_attentions: bool = False):
         """
@@ -361,11 +361,10 @@ class BartEncoderLayer(nn.Module):
         if self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
 
-
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
         hidden_states, attn_weights, _ = self.self_attn(
             hidden_states=hidden_states, attention_mask=attention_mask, output_attentions=output_attentions
         )
@@ -428,7 +427,7 @@ class BartDecoderLayer(nn.Module):
         self.to("cpu")
         self.model_parallel = False
 
-    @model_parallel_inputs_to_device    
+    @model_parallel_inputs_to_device
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -453,11 +452,11 @@ class BartDecoderLayer(nn.Module):
         if self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
 
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
-        
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
+
         # Self Attention
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
         self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
@@ -541,7 +540,6 @@ class BartClassificationHead(nn.Module):
         hidden_states = self.out_proj(hidden_states)
         return hidden_states
 
-    
 
 class BartPretrainedModel(PreTrainedModel):
     config_class = BartConfig
@@ -560,7 +558,6 @@ class BartPretrainedModel(PreTrainedModel):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
 
-        
         self.model_parallel = False
         self.first_device = "cpu"
         self.last_device = "cpu"
@@ -726,7 +723,7 @@ class BartEncoder(BartPretrainedModel):
         self.layer_norm = BartLayerNorm(config.d_model) if config.add_final_layer_norm else None
 
         self.init_weights()
-        
+
         self.model_parallel = False
         self.first_device = "cpu"
         self.last_device = "cpu"
@@ -736,8 +733,8 @@ class BartEncoder(BartPretrainedModel):
         # device_map = init_device_map(len(self.block), device_map)
         self.first_device = f"cuda:{list(device_map.keys())[0]}"
         self.last_device = f"cuda:{list(device_map.keys())[-1]}"
-        logger.info(f"MP {self.__class__.__name__}. first device: {self.first_device}")
-        logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
+        # logger.info(f"MP {self.__class__.__name__}. first device: {self.first_device}")
+        # logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
         # Load onto devices
         self.embed_tokens.to(self.first_device)
         self.embed_positions.to(self.first_device)
@@ -750,24 +747,6 @@ class BartEncoder(BartPretrainedModel):
 
         self.model_parallel = True
 
-    # @add_start_docstrings(PARALLELIZE_DOCSTRING)
-    # def parallelize(self, device_map=None):
-    #     #device_map = init_device_map(len(self.block), device_map)
-    #     self.first_device = f"cuda:{ list(device_map.keys())[0] }"
-    #     self.last_device = f"cuda:{ list(device_map.keys())[-1] }"
-        
-    #     # Load onto devices
-    #     self.embed_tokens.to(self.first_device)
-    #     self.embed_positions.to(self.first_device)
-    #     for k, v in device_map.items():
-    #         for layer in v:
-    #             self.layers[layer].parallelize(f"cuda:{k}")
-    #     self.layernorm_embedding.to(self.last_device)
-    #     if self.layer_norm is not None:
-    #         self.layer_norm.to(self.last_device)
-        
-    #     self.model_parallel = True
-
     # @add_start_docstrings(DEPARALLELIZE_DOCSTRING)
     # def deparallelize(self):
     #     self.to("cpu")
@@ -779,8 +758,8 @@ class BartEncoder(BartPretrainedModel):
     #     self.final_layer_norm.to("cpu")
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
-    
-    #@model_parallel_inputs_to_device
+
+
     def forward(
         self,
         input_ids=None,
@@ -822,13 +801,11 @@ class BartEncoder(BartPretrainedModel):
                 Whether or not to return a :class:`~transformers.file_utils.ModelOutput` instead of a plain tuple.
         """
 
-        logger.info(f"MP {self.__class__.__name__}")
+        # logger.info(f"MP {self.__class__.__name__}")
 
         if self.model_parallel:
-
             input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states = model_parallel_inputs_to_specific_device(self.first_device, input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states)
-     
-            torch.cuda.set_device(self.first_device)
+            #torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -847,21 +824,21 @@ class BartEncoder(BartPretrainedModel):
         else:
             raise ValueError("You have to specify either input_ids or inputs_embeds")
 
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(input_ids)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(self.embed_tokens, 'embed_tokens')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(input_ids)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.embed_tokens, 'embed_tokens')}")
 
         if inputs_embeds is None:
-            inputs_embeds = self.embed_tokens.to(self.first_device)(input_ids) * self.embed_scale
-            #inputs_embeds = self.embed_tokens(to_dev(self, input_ids)) * self.embed_scale
+            if self.model_parallel:
+                self.embed_tokens.to(input_ids.device)
+            inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
 
         embed_pos = self.embed_positions(input_shape)
-        logger.info(f"MP {self.__class__.__name__} inputs_embeds {inputs_embeds.device}")
-        logger.info(f"MP {self.__class__.__name__} embed_pos {embed_pos.device}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(inputs_embeds)}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(embed_pos)}")
+        # logger.info(f"MP {self.__class__.__name__} inputs_embeds {inputs_embeds.device}")
+        # logger.info(f"MP {self.__class__.__name__} embed_pos {embed_pos.device}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(inputs_embeds)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(embed_pos)}")
 
-
-        hidden_states = inputs_embeds + embed_pos # to_dev(self, embed_pos)
+        hidden_states = inputs_embeds + embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
         hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
 
@@ -872,22 +849,9 @@ class BartEncoder(BartPretrainedModel):
 
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
-        for i, encoder_layer in enumerate(self.layers):
-            logger.info(f"MP {self.__class__.__name__} layer {i}")
-            # # MP
-            # if self.model_parallel:
-            #     torch.cuda.set_device(hidden_states.device)
-            #     # Ensure that attention_mask is always on the same device as hidden_states
-            #     if attention_mask is not None:
-            #         attention_mask = attention_mask.to(hidden_states.device)
-            #     if position_bias is not None:
-            #         position_bias = position_bias.to(hidden_states.device)
-            #     if encoder_hidden_states is not None:
-            #         encoder_hidden_states = encoder_hidden_states.to(hidden_states.device)
-            #     if encoder_extended_attention_mask is not None:
-            #         encoder_extended_attention_mask = encoder_extended_attention_mask.to(hidden_states.device)
-            #     if encoder_decoder_position_bias is not None:
-            #         encoder_decoder_position_bias = encoder_decoder_position_bias.to(hidden_states.device)
+        for encoder_layer in self.layers:
+        #for i, encoder_layer in enumerate(self.layers):
+        #    logger.info(f"MP {self.__class__.__name__} layer {i}")
 
             if output_hidden_states:
                 encoder_states = encoder_states + (hidden_states,)
@@ -900,12 +864,6 @@ class BartEncoder(BartPretrainedModel):
 
             if output_attentions:
                 all_attentions = all_attentions + (attn,)
-
-            # # MP: If it's the last layer for that device, put things on the next device
-            # if self.model_parallel:
-            #     for k, v in self.device_map.items():
-            #         if i == v[-1] and "cuda:" + str(k) != self.last_device:
-            #             hidden_states = hidden_states.to("cuda:" + str(k + 1))
 
         if self.layer_norm:
             hidden_states = self.layer_norm(hidden_states)
@@ -938,8 +896,6 @@ class BartDecoder(BartPretrainedModel):
         self.max_target_positions = config.max_position_embeddings
         self.embed_scale = math.sqrt(config.d_model) if config.scale_embedding else 1.0
 
-        # XXX: replicate MP from BartEncoder once it's clean
-
         if embed_tokens is not None:
             self.embed_tokens = embed_tokens
         else:
@@ -961,19 +917,19 @@ class BartDecoder(BartPretrainedModel):
         self.layer_norm = BartLayerNorm(config.d_model) if config.add_final_layer_norm else None
 
         self.init_weights()
-        
+
         self.model_parallel = False
         self.first_device = "cpu"
         self.last_device = "cpu"
 
-    # xxx: this is the same as the BartEncoder's method
+    # xxx: this is the same as the BartEncoder.parallelize
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
     def parallelize(self, device_map=None):
         # device_map = init_device_map(len(self.block), device_map)
         self.first_device = f"cuda:{list(device_map.keys())[0]}"
         self.last_device = f"cuda:{list(device_map.keys())[-1]}"
-        logger.info(f"MP {self.__class__.__name__}. first device: {self.first_device}")
-        logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
+        # logger.info(f"MP {self.__class__.__name__}. first device: {self.first_device}")
+        # logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
 
         # Load onto devices
         self.embed_tokens.to(self.first_device)
@@ -1052,9 +1008,9 @@ class BartDecoder(BartPretrainedModel):
         """
 
         if self.model_parallel:
-
             input_ids, attention_mask, encoder_hidden_states, encoder_attention_mask, past_key_values, inputs_embeds, use_cache, output_attentions, output_hidden_states = model_parallel_inputs_to_specific_device(self.first_device, input_ids, attention_mask, encoder_hidden_states, encoder_attention_mask, past_key_values, inputs_embeds, use_cache, output_attentions, output_hidden_states)
 
+            # getting RuntimeError: CUDA error: an illegal memory access was encountered w/o the next call
             torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -1079,8 +1035,9 @@ class BartDecoder(BartPretrainedModel):
         past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
 
         if inputs_embeds is None:
-            inputs_embeds = self.embed_tokens.to(self.first_device)(input_ids) * self.embed_scale
-            #inputs_embeds = self.embed_tokens(to_dev(self, input_ids)) * self.embed_scale
+            if self.model_parallel:
+                self.embed_tokens.to(input_ids.device)
+            inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
 
         # create causal mask
         # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
@@ -1212,17 +1169,18 @@ class BartModel(BartPretrainedModel):
         self.init_weights()
 
         self.model_parallel = False
+        self.main_device = None
 
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
     def parallelize(self, device_map=None):
         # device_map = init_device_map(len(self.encoder.block), device_map)
         encoder_device_map = device_map["encoder"]
         decoder_device_map = device_map["decoder"]
-        
+
         self.encoder.parallelize(encoder_device_map)
         self.decoder.parallelize(decoder_device_map)
-        self.shared.to(self.encoder.first_device)
-
+        self.main_device = self.encoder.first_device
+        self.shared.to(self.main_device)
         self.model_parallel = True
 
     # @add_start_docstrings(DEPARALLELIZE_DOCSTRING)
@@ -1232,8 +1190,6 @@ class BartModel(BartPretrainedModel):
     #     self.lm_head.to("cpu")
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
-
-        
 
 
     def get_input_embeddings(self):
@@ -1286,7 +1242,7 @@ class BartModel(BartPretrainedModel):
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        logger.info(f"MP {self.__class__.__name__}. encoder")
+        # logger.info(f"MP {self.__class__.__name__}. encoder")
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
@@ -1304,22 +1260,7 @@ class BartModel(BartPretrainedModel):
                 attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
             )
 
-        # MP
-        # hidden_states = encoder_outputs[0]
-        # if self.model_parallel:
-        #     torch.cuda.set_device(self.decoder.first_device)
-        # # Set device for model parallelism
-        # if self.model_parallel:
-        #     torch.cuda.set_device(self.decoder.first_device)
-        #     hidden_states = hidden_states.to(self.decoder.first_device)
-        #     if decoder_input_ids is not None:
-        #         decoder_input_ids = decoder_input_ids.to(self.decoder.first_device)
-        #     if attention_mask is not None:
-        #         attention_mask = attention_mask.to(self.decoder.first_device)
-        #     if decoder_attention_mask is not None:
-        #         decoder_attention_mask = decoder_attention_mask.to(self.decoder.first_device)
-
-        logger.info(f"MP {self.__class__.__name__}. decoder")
+        # logger.info(f"MP {self.__class__.__name__}. decoder")
         # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
         decoder_outputs = self.decoder(
             input_ids=decoder_input_ids,
@@ -1336,6 +1277,9 @@ class BartModel(BartPretrainedModel):
 
         if not return_dict:
             return decoder_outputs + encoder_outputs
+
+        if self.model_parallel:
+            encoder_outputs, decoder_outputs = model_parallel_inputs_to_specific_device(self.main_device, encoder_outputs, decoder_outputs)
 
         return Seq2SeqModelOutput(
             last_hidden_state=decoder_outputs.last_hidden_state,
@@ -1370,6 +1314,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
         self.init_weights()
 
         self.model_parallel = False
+        self.main_device = None
         self.last_device = None
 
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
@@ -1377,10 +1322,13 @@ class BartForConditionalGeneration(BartPretrainedModel):
         # device_map = init_device_map(len(self.encoder.block), device_map)
         self.model.parallelize(device_map)
         self.last_device = self.model.decoder.last_device
-        self.final_logits_bias = self.final_logits_bias.to(self.last_device)
-        self.lm_head.to(self.last_device)
-        logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
+        self.main_device = self.model.main_device
+        # logger.info(f"MP {self.__class__.__name__} MAIN DEVICE {self.main_device}")
+        self.final_logits_bias = self.final_logits_bias.to(self.main_device)
+        self.lm_head.to(self.main_device)
+        # logger.info(f"MP {self.__class__.__name__}. last  device: {self.last_device}")
         self.model_parallel = True
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.lm_head, 'self.lm_head')}")
 
     # @add_start_docstrings(DEPARALLELIZE_DOCSTRING)
     # def deparallelize(self):
@@ -1390,7 +1338,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
 
-        
 
     def get_encoder(self):
         return self.model.get_encoder()
@@ -1470,9 +1417,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(labels, self.config.pad_token_id)
 
-        # MP
-        # t5 has code here, but it doesn't call .model - instead calling encoder/decoder - which already take care of MP
-
         outputs = self.model(
             input_ids,
             attention_mask=attention_mask,
@@ -1488,10 +1432,12 @@ class BartForConditionalGeneration(BartPretrainedModel):
             return_dict=return_dict,
         )
 
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(self.lm_head, 'self.lm_head')}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(outputs[0])}")
-        logger.info(f"MP {self.__class__.__name__} {log_name_device(self.final_logits_bias, 'self.final_logits_bias')}")
-        lm_logits = self.lm_head(outputs[0].to(self.last_device)) + self.final_logits_bias
+        if self.model_parallel:
+            self.lm_head.to(self.main_device)
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.lm_head, 'self.lm_head')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(outputs[0], 'outputs[0]')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.final_logits_bias, 'self.final_logits_bias')}")
+        lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
 
         masked_lm_loss = None
         if labels is not None:
@@ -1502,8 +1448,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
         if not return_dict:
             output = (lm_logits,) + outputs[1:]
             return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
-
-        masked_lm_loss, lm_logits, outputs.past_key_values, outputs.decoder_hidden_states, outputs.decoder_attentions, outputs.cross_attentions, outputs.encoder_last_hidden_state, outputs.encoder_hidden_states, outputs.encoder_attentions = model_parallel_inputs_to_specific_device("cuda:0", masked_lm_loss, lm_logits, outputs.past_key_values, outputs.decoder_hidden_states, outputs.decoder_attentions, outputs.cross_attentions, outputs.encoder_last_hidden_state, outputs.encoder_hidden_states, outputs.encoder_attentions)
 
         return Seq2SeqLMOutput(
             loss=masked_lm_loss,
@@ -1549,8 +1493,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
     def _reorder_cache(past, beam_idx):
         reordered_past = ()
         for layer_past in past:
-            #layer_past = layer_past.to("cpu")
-            #reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
             reordered_past += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
         return reordered_past
 

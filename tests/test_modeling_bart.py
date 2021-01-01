@@ -221,9 +221,7 @@ class BartModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.TestCase):
         else ()
     )
     all_generative_model_classes = (BartForConditionalGeneration,) if is_torch_available() else ()
-    all_parallelizable_model_classes = (BartModel,) if is_torch_available() else ()
-    # XXX: start with just BartModel
-    #    all_parallelizable_model_classes = (BartModel, BartForConditionalGeneration) if is_torch_available() else ()
+    all_parallelizable_model_classes = (BartModel, BartForConditionalGeneration) if is_torch_available() else ()
     is_encoder_decoder = True
     test_pruning = False
     test_head_masking = False

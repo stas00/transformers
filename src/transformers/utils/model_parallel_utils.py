@@ -71,19 +71,24 @@ def init_device_map(n_layers, device_map=None):
     return device_map
 
 # get variable name (doesn't work for everything)
-# https://stackoverflow.com/a/40536047/9201239
 import inspect
 def log_name_device(var, fallbackname=""): # search from the outmost frame inwards
-    
-    for fi in reversed(inspect.stack()):
+    """
+    This helper is useful for debug tracing of devices of variables, e.g.:
+      logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
+    if it can't deduce the variable name (or finds wrong name), pass the name explicitly, e.g.:
+      logger.info(f"MP {self.__class__.__name__} {log_name_device(self.lm_head, 'self.lm_head')}")
+    """
+
+    for f in reversed(inspect.stack()):
         name = "unknown"
-        names = [var_name for var_name, var_val in fi.frame.f_locals.items() if var_val is var]
+        names = [x for x, val in f.frame.f_locals.items() if val is var]
         if len(names) > 0:
             name = names[0]
             break
     if name == "var":
         name = fallbackname
-        
+
     device = None
     try:
         device = var.device
@@ -102,16 +107,16 @@ def get_layer_device(self):
             device = None
         return device
 
-def to_dev(self, input):
-        try:
-            device = next(self.parameters(recurse=True)).device
-        except StopIteration:
-            device = None
+# def to_dev(self, input):
+#         try:
+#             device = next(self.parameters(recurse=True)).device
+#         except StopIteration:
+#             device = None
 
-        if device is None:
-            raise ValueError(f"Can't find any params for {self.__class__}")
-        print(f"manual switch to {device}")
-        return input.to(device)
+#         if device is None:
+#             raise ValueError(f"Can't find any params for {self.__class__}")
+#         print(f"manual switch to {device}")
+#         return input.to(device)
 
 
 def model_parallel_inputs_to_device(func):
@@ -135,26 +140,12 @@ def model_parallel_inputs_to_device(func):
 
         # print(f"layer device: {device}")
         if device is not None:
-            
-            torch.cuda.set_device(device)
+            #torch.cuda.set_device(device)
             print(f"auto-move inputs to {device}")
-                      
-            # pprint(input)
-            input = list(input)
-            for i, v in enumerate(input):
-                if v is not None:
-                    print(f"prev: {i} {input[i].device} => {device}")
-                    input[i] = v.to(device)
-            input = tuple(input)
-            # pprint(input)
 
-            # pprint(kwargs)
-            for k in kwargs.keys():
-                if kwargs[k] is not None and torch.is_tensor(kwargs[k]):
-                    kwargs[k] = kwargs[k].to(device)
-            # pprint(kwargs)
+            input = recursive_to(device, input)
 
-        return func(self, *input, **kwargs)
+            return func(self, *input, **kwargs)
 
     return _call__mp
 
@@ -183,12 +174,13 @@ def recursive_to(device, item):
 
     else:
         return item
-    
+
 
 def model_parallel_inputs_to_specific_device(device, *input):
-    
     print(f"move specific inputs to {device}")
-    return recursive_to(device, input)
+    output = recursive_to(device, input)
+    # remove the need for the caller to perform "a, = foo(a)", which otherwise will make `a` a tuple when it might be not be
+    return output[0] if len(output)==1 else output
 
 
 def model_parallel_call(self, *input, **kwargs):
