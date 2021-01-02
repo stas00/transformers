@@ -44,11 +44,12 @@ from ...modeling_utils import PreTrainedModel
 from ...utils import logging
 from ...utils.model_parallel_utils import (
     init_device_map,
-    log_name_device,
     model_parallel_inputs_to_device,
     model_parallel_inputs_to_specific_device,
-    print_layer_devices,
 )
+
+#    log_name_device,
+#    print_layer_devices,
 from .configuration_bart import BartConfig
 
 
@@ -127,11 +128,11 @@ DEPARALLELIZE_DOCSTRING = r"""
 # in BartEncoder.forward
 # it works fine once on "cuda:0", then after it runs on "cuda:1" of the same code it corrupts `hidden_states` and self.fc1(hidden_states) blows up with the above error
 # https://github.com/pytorch/fairseq/issues/2012 native might be slightly slower than apex FusedLayerNorm
-# 
+#
 def BartLayerNorm(normalized_shape: torch.Size, eps: float = 1e-5, elementwise_affine: bool = True):
     # try:
     #     from apex.normalization import FusedLayerNorm
-    
+
     #     return FusedLayerNorm(normalized_shape, eps, elementwise_affine)
     # except ImportError:
     #     pass
@@ -247,8 +248,7 @@ class BartAttention(nn.Module):
         is_cross_attention = key_value_states is not None
         bsz, tgt_len, embed_dim = hidden_states.size()
 
-
-        #torch.cuda.set_device(hidden_states.device)
+        # torch.cuda.set_device(hidden_states.device)
 
         # get query proj
         query_states = self.q_proj(hidden_states) * self.scaling
@@ -363,7 +363,6 @@ class BartEncoderLayer(nn.Module):
 
     def parallelize(self, device):
         self.to(device)
-        #self.self_attn_layer_norm = 
         self.model_parallel = True
 
     def deparallelize(self):
@@ -379,7 +378,7 @@ class BartEncoderLayer(nn.Module):
                 `(batch, 1, tgt_len, src_len)` where padding elements are indicated by very large negative values.
             output_attentions (:obj:`bool`): Whether the base model outputs attentions. This requires the attentions tensor to be reshaped in this function.
         """
-        print_layer_devices(self)
+        # print_layer_devices(self)
         residual = hidden_states
         if self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
@@ -394,18 +393,18 @@ class BartEncoderLayer(nn.Module):
         hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = residual + hidden_states
 
-        #torch.cuda.set_device(hidden_states.device)
-        #print(hidden_states)
+        # torch.cuda.set_device(hidden_states.device)
+        # print(hidden_states)
         if not self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
-        #print(hidden_states)
+        # print(hidden_states)
 
         residual = hidden_states
         if self.normalize_before:
             hidden_states = self.final_layer_norm(hidden_states)
 
         # XXX: this is where apex.normalization.FusedLayerNorm causes explosion, and triggered by one of the above layer norm calls
-        #RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)`
+        # RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)`
         hidden_states = self.activation_fn(self.fc1(hidden_states))
         hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
         hidden_states = self.fc2(hidden_states)
@@ -842,7 +841,7 @@ class BartEncoder(BartPretrainedModel):
             ) = model_parallel_inputs_to_specific_device(
                 self.first_device, input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states
             )
-            #torch.cuda.set_device(self.first_device)
+            # torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -1069,7 +1068,7 @@ class BartDecoder(BartPretrainedModel):
             )
 
             # getting RuntimeError: CUDA error: an illegal memory access was encountered w/o the next call
-            #torch.cuda.set_device(self.first_device)
+            # torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -1241,10 +1240,6 @@ class BartModel(BartPretrainedModel):
         self.main_device = self.encoder.first_device
         self.shared.to(self.main_device)
         self.model_parallel = True
-
-        # overcome RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)
-        # https://github.com/pytorch/fairseq/issues/2012 native might be slightly slower than apex FusedLayerNorm
-        BartLayerNorm = torch.nn.LayerNorm
 
     # @add_start_docstrings(DEPARALLELIZE_DOCSTRING)
     # def deparallelize(self):

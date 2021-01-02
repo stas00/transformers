@@ -24,8 +24,9 @@ from typing import List, Tuple
 
 from transformers import is_torch_available
 from transformers.file_utils import WEIGHTS_NAME
-from transformers.utils.model_parallel_utils import model_parallel_inputs_to_specific_device
 from transformers.testing_utils import require_torch, require_torch_multi_gpu, slow, torch_device
+from transformers.utils.model_parallel_utils import model_parallel_inputs_to_specific_device
+
 
 if is_torch_available():
     import numpy as np
@@ -1150,8 +1151,7 @@ class ModelTesterMixin:
             inputs_dict = self._prepare_for_class(inputs_dict, model_class)
 
             model = model_class(config)
-            
-            #output = model(**_cast_to_device(inputs_dict, "cpu"))
+
             output = model(**model_parallel_inputs_to_specific_device("cpu", inputs_dict))
 
             model.parallelize()
@@ -1174,7 +1174,8 @@ class ModelTesterMixin:
         )
 
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
-        inputs_dict.pop("decoder_input_ids") # XXX: BartForConditionalGeneration can't handle it
+        if "decoder_input_ids" in inputs_dict:
+            inputs_dict.pop("decoder_input_ids")  # Bart* breaks if it's passed
 
         for model_class in all_generative_and_parallelizable_model_classes:
             inputs_dict = self._prepare_for_class(inputs_dict, model_class)
