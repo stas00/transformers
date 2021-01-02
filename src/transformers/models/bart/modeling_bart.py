@@ -42,10 +42,16 @@ from ...modeling_outputs import (
 )
 from ...modeling_utils import PreTrainedModel
 from ...utils import logging
-from ...utils.model_parallel_utils import init_device_map, model_parallel_inputs_to_device, model_parallel_inputs_to_specific_device
+from ...utils.model_parallel_utils import (
+    init_device_map,
+    log_name_device,
+    model_parallel_inputs_to_device,
+    model_parallel_inputs_to_specific_device,
+    print_layer_devices,
+)
 from .configuration_bart import BartConfig
 
-from ...utils.model_parallel_utils import log_name_device
+
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "BartConfig"
@@ -117,13 +123,18 @@ DEPARALLELIZE_DOCSTRING = r"""
 """
 
 
+# XXX: overcome RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)
+# in BartEncoder.forward
+# it works fine once on "cuda:0", then after it runs on "cuda:1" of the same code it corrupts `hidden_states` and self.fc1(hidden_states) blows up with the above error
+# https://github.com/pytorch/fairseq/issues/2012 native might be slightly slower than apex FusedLayerNorm
+# 
 def BartLayerNorm(normalized_shape: torch.Size, eps: float = 1e-5, elementwise_affine: bool = True):
-    try:
-        from apex.normalization import FusedLayerNorm
-
-        return FusedLayerNorm(normalized_shape, eps, elementwise_affine)
-    except ImportError:
-        pass
+    # try:
+    #     from apex.normalization import FusedLayerNorm
+    
+    #     return FusedLayerNorm(normalized_shape, eps, elementwise_affine)
+    # except ImportError:
+    #     pass
     return torch.nn.LayerNorm(normalized_shape, eps, elementwise_affine)
 
 
@@ -215,7 +226,7 @@ class BartAttention(nn.Module):
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
 
-    @model_parallel_inputs_to_device
+    # @model_parallel_inputs_to_device
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -228,8 +239,16 @@ class BartAttention(nn.Module):
 
         # if key_value_states are provided this layer is used as a cross-attention layer
         # for the decoder
+
+        # print_layer_devices(self)
+        # hidden_states, key_value_states, past_key_value, attention_mask, output_attentions = model_parallel_inputs_to_specific_device(self.k_proj.weight.device, hidden_states, key_value_states, past_key_value, attention_mask, output_attentions)
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(key_value_states, 'key_value_states')}")
+
         is_cross_attention = key_value_states is not None
         bsz, tgt_len, embed_dim = hidden_states.size()
+
+
+        #torch.cuda.set_device(hidden_states.device)
 
         # get query proj
         query_states = self.q_proj(hidden_states) * self.scaling
@@ -239,6 +258,8 @@ class BartAttention(nn.Module):
             key_states = past_key_value[0]
             value_states = past_key_value[1]
         elif is_cross_attention:
+            # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.k_proj, 'self.k_proj')}")
+            # logger.info(f"MP {self.__class__.__name__} {log_name_device(key_value_states, 'key_value_states')}")
             # cross_attentions
             key_states = self._shape(self.k_proj(key_value_states), -1, bsz)
             value_states = self._shape(self.v_proj(key_value_states), -1, bsz)
@@ -342,6 +363,7 @@ class BartEncoderLayer(nn.Module):
 
     def parallelize(self, device):
         self.to(device)
+        #self.self_attn_layer_norm = 
         self.model_parallel = True
 
     def deparallelize(self):
@@ -357,25 +379,33 @@ class BartEncoderLayer(nn.Module):
                 `(batch, 1, tgt_len, src_len)` where padding elements are indicated by very large negative values.
             output_attentions (:obj:`bool`): Whether the base model outputs attentions. This requires the attentions tensor to be reshaped in this function.
         """
+        print_layer_devices(self)
         residual = hidden_states
         if self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
 
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
-        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
-        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask, 'attention_mask')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions, 'output_attentions')}")
         hidden_states, attn_weights, _ = self.self_attn(
             hidden_states=hidden_states, attention_mask=attention_mask, output_attentions=output_attentions
         )
         hidden_states = F.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = residual + hidden_states
+
+        #torch.cuda.set_device(hidden_states.device)
+        #print(hidden_states)
         if not self.normalize_before:
             hidden_states = self.self_attn_layer_norm(hidden_states)
+        #print(hidden_states)
 
         residual = hidden_states
         if self.normalize_before:
             hidden_states = self.final_layer_norm(hidden_states)
+
+        # XXX: this is where apex.normalization.FusedLayerNorm causes explosion, and triggered by one of the above layer norm calls
+        #RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)`
         hidden_states = self.activation_fn(self.fc1(hidden_states))
         hidden_states = F.dropout(hidden_states, p=self.activation_dropout, training=self.training)
         hidden_states = self.fc2(hidden_states)
@@ -454,8 +484,8 @@ class BartDecoderLayer(nn.Module):
 
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(self.self_attn, 'self.self_attn')}")
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(hidden_states)}")
-        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
-        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask, 'attention_mask')}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(output_attentions, 'output_attentions')}")
 
         # Self Attention
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
@@ -479,6 +509,7 @@ class BartDecoderLayer(nn.Module):
             residual = hidden_states
             if self.normalize_before:
                 hidden_states = self.encoder_attn_layer_norm(hidden_states)
+            # print_layer_devices(self)
 
             # cross_attn cached key/values tuple is at positions 3,4 of present_key_value tuple
             cross_attn_past_key_value = past_key_value[-2:] if past_key_value is not None else None
@@ -561,7 +592,6 @@ class BartPretrainedModel(PreTrainedModel):
         self.model_parallel = False
         self.first_device = "cpu"
         self.last_device = "cpu"
-
 
     @property
     def dummy_inputs(self):
@@ -741,9 +771,9 @@ class BartEncoder(BartPretrainedModel):
         for k, v in device_map.items():
             for layer in v:
                 self.layers[layer].parallelize(f"cuda:{k}")
-        self.layernorm_embedding.to(self.last_device)
+        self.layernorm_embedding.to(self.first_device)
         if self.layer_norm is not None:
-            self.layer_norm.to(self.last_device)
+            self.layer_norm.to(self.last_device)  # XXX: first?
 
         self.model_parallel = True
 
@@ -758,7 +788,6 @@ class BartEncoder(BartPretrainedModel):
     #     self.final_layer_norm.to("cpu")
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
-
 
     def forward(
         self,
@@ -804,7 +833,15 @@ class BartEncoder(BartPretrainedModel):
         # logger.info(f"MP {self.__class__.__name__}")
 
         if self.model_parallel:
-            input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states = model_parallel_inputs_to_specific_device(self.first_device, input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states)
+            (
+                input_ids,
+                attention_mask,
+                inputs_embeds,
+                output_attentions,
+                output_hidden_states,
+            ) = model_parallel_inputs_to_specific_device(
+                self.first_device, input_ids, attention_mask, inputs_embeds, output_attentions, output_hidden_states
+            )
             #torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -833,10 +870,10 @@ class BartEncoder(BartPretrainedModel):
             inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
 
         embed_pos = self.embed_positions(input_shape)
-        # logger.info(f"MP {self.__class__.__name__} inputs_embeds {inputs_embeds.device}")
-        # logger.info(f"MP {self.__class__.__name__} embed_pos {embed_pos.device}")
+
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(inputs_embeds)}")
         # logger.info(f"MP {self.__class__.__name__} {log_name_device(embed_pos)}")
+        # logger.info(f"MP {self.__class__.__name__} {log_name_device(attention_mask)}")
 
         hidden_states = inputs_embeds + embed_pos
         hidden_states = self.layernorm_embedding(hidden_states)
@@ -849,9 +886,9 @@ class BartEncoder(BartPretrainedModel):
 
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
-        for encoder_layer in self.layers:
-        #for i, encoder_layer in enumerate(self.layers):
-        #    logger.info(f"MP {self.__class__.__name__} layer {i}")
+        # for encoder_layer in self.layers:
+        for i, encoder_layer in enumerate(self.layers):
+            logger.info(f"MP {self.__class__.__name__} layer {i}")
 
             if output_hidden_states:
                 encoder_states = encoder_states + (hidden_states,)
@@ -937,9 +974,9 @@ class BartDecoder(BartPretrainedModel):
         for k, v in device_map.items():
             for layer in v:
                 self.layers[layer].parallelize(f"cuda:{k}")
-        self.layernorm_embedding.to(self.last_device)
+        self.layernorm_embedding.to(self.first_device)
         if self.layer_norm is not None:
-            self.layer_norm.to(self.last_device)
+            self.layer_norm.to(self.last_device)  # XXX: first?
 
         self.model_parallel = True
 
@@ -1008,10 +1045,31 @@ class BartDecoder(BartPretrainedModel):
         """
 
         if self.model_parallel:
-            input_ids, attention_mask, encoder_hidden_states, encoder_attention_mask, past_key_values, inputs_embeds, use_cache, output_attentions, output_hidden_states = model_parallel_inputs_to_specific_device(self.first_device, input_ids, attention_mask, encoder_hidden_states, encoder_attention_mask, past_key_values, inputs_embeds, use_cache, output_attentions, output_hidden_states)
+            (
+                input_ids,
+                attention_mask,
+                encoder_hidden_states,
+                encoder_attention_mask,
+                past_key_values,
+                inputs_embeds,
+                use_cache,
+                output_attentions,
+                output_hidden_states,
+            ) = model_parallel_inputs_to_specific_device(
+                self.first_device,
+                input_ids,
+                attention_mask,
+                encoder_hidden_states,
+                encoder_attention_mask,
+                past_key_values,
+                inputs_embeds,
+                use_cache,
+                output_attentions,
+                output_hidden_states,
+            )
 
             # getting RuntimeError: CUDA error: an illegal memory access was encountered w/o the next call
-            torch.cuda.set_device(self.first_device)
+            #torch.cuda.set_device(self.first_device)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -1103,6 +1161,7 @@ class BartDecoder(BartPretrainedModel):
         all_cross_attentions = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
         for idx, decoder_layer in enumerate(self.layers):
+            logger.info(f"MP {self.__class__.__name__} layer {idx}")
             # add LayerDrop (see https://arxiv.org/abs/1909.11556 for description)
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -1173,7 +1232,7 @@ class BartModel(BartPretrainedModel):
 
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
     def parallelize(self, device_map=None):
-        # device_map = init_device_map(len(self.encoder.block), device_map)
+        device_map = init_device_map(len(self.encoder.layers), len(self.decoder.layers), device_map)
         encoder_device_map = device_map["encoder"]
         decoder_device_map = device_map["decoder"]
 
@@ -1183,6 +1242,10 @@ class BartModel(BartPretrainedModel):
         self.shared.to(self.main_device)
         self.model_parallel = True
 
+        # overcome RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling `cublasSgemm(...)
+        # https://github.com/pytorch/fairseq/issues/2012 native might be slightly slower than apex FusedLayerNorm
+        BartLayerNorm = torch.nn.LayerNorm
+
     # @add_start_docstrings(DEPARALLELIZE_DOCSTRING)
     # def deparallelize(self):
     #     self.encoder.deparallelize()
@@ -1190,7 +1253,6 @@ class BartModel(BartPretrainedModel):
     #     self.lm_head.to("cpu")
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
-
 
     def get_input_embeddings(self):
         return self.shared
@@ -1279,7 +1341,9 @@ class BartModel(BartPretrainedModel):
             return decoder_outputs + encoder_outputs
 
         if self.model_parallel:
-            encoder_outputs, decoder_outputs = model_parallel_inputs_to_specific_device(self.main_device, encoder_outputs, decoder_outputs)
+            encoder_outputs, decoder_outputs = model_parallel_inputs_to_specific_device(
+                self.main_device, encoder_outputs, decoder_outputs
+            )
 
         return Seq2SeqModelOutput(
             last_hidden_state=decoder_outputs.last_hidden_state,
@@ -1337,7 +1401,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
     #     self.lm_head.to("cpu")
     #     self.model_parallel = False
     #     torch.cuda.empty_cache()
-
 
     def get_encoder(self):
         return self.model.get_encoder()

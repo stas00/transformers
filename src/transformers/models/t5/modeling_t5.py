@@ -955,7 +955,9 @@ class T5Stack(T5PreTrainedModel):
                 devices = list(self.device_map.keys())
                 for e, d in enumerate(devices):
                     if i == self.device_map[d][-1] and f"cuda:{d}" != self.last_device:
-                        hidden_states = hidden_states.to(f"cuda:{devices[e+1]}") # again assumption that devices are not only ordered but also have a stride of 1
+                        hidden_states = hidden_states.to(
+                            f"cuda:{devices[e+1]}"
+                        )  # again assumption that devices are not only ordered but also have a stride of 1
 
         hidden_states = self.final_layer_norm(hidden_states)
         hidden_states = self.dropout(hidden_states)

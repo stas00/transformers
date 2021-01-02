@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gc
 import copy
+import gc
 import inspect
 import os.path
 import random
@@ -24,8 +24,8 @@ from typing import List, Tuple
 
 from transformers import is_torch_available
 from transformers.file_utils import WEIGHTS_NAME
+from transformers.utils.model_parallel_utils import model_parallel_inputs_to_specific_device
 from transformers.testing_utils import require_torch, require_torch_multi_gpu, slow, torch_device
-
 
 if is_torch_available():
     import numpy as np
@@ -1089,7 +1089,7 @@ class ModelTesterMixin:
             per_device_memory = []
             for id in range(torch.cuda.device_count()):
                 with torch.cuda.device(id):
-                    per_device_memory.append(torch.cuda.memory_allocated()>>20)
+                    per_device_memory.append(torch.cuda.memory_allocated() >> 20)
 
             return per_device_memory
 
@@ -1149,22 +1149,13 @@ class ModelTesterMixin:
         for model_class in self.all_parallelizable_model_classes:
             inputs_dict = self._prepare_for_class(inputs_dict, model_class)
 
-            def cast_to_device(dictionary, device):
-                output = {}
-                for k, v in dictionary.items():
-                    if isinstance(v, torch.Tensor):
-                        output[k] = v.to(device)
-                    else:
-                        output[k] = v
-
-                return output
-
             model = model_class(config)
-            output = model(**cast_to_device(inputs_dict, "cpu"))
+            
+            #output = model(**_cast_to_device(inputs_dict, "cpu"))
+            output = model(**model_parallel_inputs_to_specific_device("cpu", inputs_dict))
 
             model.parallelize()
-
-            parallel_output = model(**cast_to_device(inputs_dict, "cuda:0"))
+            parallel_output = model(**model_parallel_inputs_to_specific_device("cuda:0", inputs_dict))
 
             for value, parallel_value in zip(output, parallel_output):
                 if isinstance(value, torch.Tensor):
@@ -1183,23 +1174,14 @@ class ModelTesterMixin:
         )
 
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
+        inputs_dict.pop("decoder_input_ids") # XXX: BartForConditionalGeneration can't handle it
 
         for model_class in all_generative_and_parallelizable_model_classes:
             inputs_dict = self._prepare_for_class(inputs_dict, model_class)
             model = model_class(config)
 
-            def cast_to_device(dictionary, device):
-                output = {}
-                for k, v in dictionary.items():
-                    if isinstance(v, torch.Tensor):
-                        output[k] = v.to(device)
-                    else:
-                        output[k] = v
-
-                return output
-
             model.parallelize()
-            model.generate(**cast_to_device(inputs_dict, "cuda:0"), num_beams=2)
+            model.generate(**model_parallel_inputs_to_specific_device("cuda:0", inputs_dict), num_beams=2)
 
 
 global_rng = random.Random()
