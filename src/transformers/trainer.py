@@ -1487,7 +1487,10 @@ class Trainer:
                 scaled_loss.backward()
         elif self.deepspeed:
             # loss gets scaled under gradient_accumulation_steps in deepspeed
+            from deepspeed.runtime.utils import see_memory_usage
+            see_memory_usage("Before bwd", True)
             loss = self.deepspeed.backward(loss)
+            see_memory_usage("After bwd", True)
         else:
             loss.backward()
 
@@ -1503,7 +1506,11 @@ class Trainer:
             labels = inputs.pop("labels")
         else:
             labels = None
+
+        from deepspeed.runtime.utils import see_memory_usage
+        see_memory_usage("Before fwd", True)
         outputs = model(**inputs)
+        see_memory_usage("After fwd", True)
         # Save past state if it exists
         # TODO: this needs to be fixed and made cleaner later.
         if self.args.past_index >= 0:

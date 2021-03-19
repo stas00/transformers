@@ -439,6 +439,8 @@ def init_deepspeed(trainer, num_training_steps, resume_from_checkpoint=None):
     # keep for quick debug:
     # from pprint import pprint; pprint(config)
 
+    from deepspeed.runtime.utils import see_memory_usage
+    see_memory_usage("Before deepspeed.initialize", True)
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     model, optimizer, _, lr_scheduler = deepspeed.initialize(
         model=model,
@@ -447,6 +449,7 @@ def init_deepspeed(trainer, num_training_steps, resume_from_checkpoint=None):
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
     )
+    see_memory_usage("After deepspeed.initialize", True)
 
     if resume_from_checkpoint is not None:
         logger.info(f"Attempting to resume from {resume_from_checkpoint}")

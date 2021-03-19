@@ -1495,6 +1495,9 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        #from deepspeed.pt.deepspeed_utils import see_memory_usage
+        #see_memory_usage("forward start")
+
         # import torch.distributed as dist
         # self.c += 1
         # print(f"{dist.get_rank()} {self.c} {input_ids}")
