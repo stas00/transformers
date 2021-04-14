@@ -54,7 +54,6 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from .data.data_collator import DataCollator, DataCollatorWithPadding, default_data_collator
-from .dependency_versions_check import dep_version_check
 from .file_utils import (
     WEIGHTS_NAME,
     is_apex_available,
@@ -140,13 +139,16 @@ if is_torch_tpu_available():
     import torch_xla.distributed.parallel_loader as pl
 
 if is_fairscale_available():
-    dep_version_check("fairscale")
     import fairscale
-    from fairscale.nn.data_parallel import FullyShardedDataParallel as FullyShardedDDP
     from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
-    from fairscale.nn.wrap import auto_wrap
     from fairscale.optim import OSS
     from fairscale.optim.grad_scaler import ShardedGradScaler
+
+    if version.parse(fairscale.__version__) >= version.parse("0.3"):
+        from fairscale.nn.data_parallel import FullyShardedDataParallel as FullyShardedDDP
+        from fairscale.nn.wrap import auto_wrap
+    else:
+        FullyShardedDDP = None
 
 if is_sagemaker_dp_enabled():
     import smdistributed.dataparallel.torch.distributed as dist
@@ -1149,21 +1151,17 @@ class Trainer:
                             )
 
                     # Optimizer step
-                    optimizer_was_run = True
                     if self.deepspeed:
                         pass  # called outside the loop
                     elif is_torch_tpu_available():
                         xm.optimizer_step(self.optimizer)
                     elif self.use_amp:
-                        scale_before = self.scaler.get_scale()
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
-                        scale_after = self.scaler.get_scale()
-                        optimizer_was_run = scale_before <= scale_after
                     else:
                         self.optimizer.step()
 
-                    if optimizer_was_run and not self.deepspeed:
+                    if not self.deepspeed:
                         self.lr_scheduler.step()
 
                     model.zero_grad()
@@ -1995,7 +1993,7 @@ class Trainer:
         inputs: Dict[str, Union[torch.Tensor, Any]],
         prediction_loss_only: bool,
         ignore_keys: Optional[List[str]] = None,
-    ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
+    ) -> Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]:
         """
         Perform an evaluation step on :obj:`model` using obj:`inputs`.
 
@@ -2016,8 +2014,8 @@ class Trainer:
                 gathering predictions.
 
         Return:
-            Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss,
-            logits and labels (each being optional).
+            Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss, logits and
+            labels (each being optional).
         """
         has_labels = all(inputs.get(k) is not None for k in self.label_names)
         inputs = self._prepare_inputs(inputs)

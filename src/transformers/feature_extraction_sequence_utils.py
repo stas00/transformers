@@ -56,7 +56,13 @@ class SequenceFeatureExtractor(FeatureExtractionMixin):
         self.padding_side = kwargs.pop("padding_side", "right")
         self.return_attention_mask = kwargs.pop("return_attention_mask", True)
 
-        super().__init__(**kwargs)
+        # Additional attributes without default values
+        for key, value in kwargs.items():
+            try:
+                setattr(self, key, value)
+            except AttributeError as err:
+                logger.error(f"Can't set {key} with value {value} for {self}")
+                raise err
 
     def pad(
         self,

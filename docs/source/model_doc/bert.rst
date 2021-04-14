@@ -90,7 +90,7 @@ BertForPreTraining
     :members: forward
 
 
-BertLMHeadModel
+BertModelLMHeadModel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: transformers.BertLMHeadModel

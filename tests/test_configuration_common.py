@@ -20,16 +20,14 @@ import tempfile
 
 
 class ConfigTester(object):
-    def __init__(self, parent, config_class=None, has_text_modality=True, **kwargs):
+    def __init__(self, parent, config_class=None, **kwargs):
         self.parent = parent
         self.config_class = config_class
-        self.has_text_modality = has_text_modality
         self.inputs_dict = kwargs
 
     def create_and_test_config_common_properties(self):
         config = self.config_class(**self.inputs_dict)
-        if self.has_text_modality:
-            self.parent.assertTrue(hasattr(config, "vocab_size"))
+        self.parent.assertTrue(hasattr(config, "vocab_size"))
         self.parent.assertTrue(hasattr(config, "hidden_size"))
         self.parent.assertTrue(hasattr(config, "num_attention_heads"))
         self.parent.assertTrue(hasattr(config, "num_hidden_layers"))

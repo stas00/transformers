@@ -46,7 +46,8 @@ Tips:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: transformers.{{cookiecutter.camelcase_modelname}}TokenizerFast
-    :members:
+    :members: build_inputs_with_special_tokens, get_special_tokens_mask,
+        create_token_type_ids_from_sequences, save_vocabulary
 
 
 {% if "PyTorch" in cookiecutter.generate_tensorflow_and_pytorch -%}

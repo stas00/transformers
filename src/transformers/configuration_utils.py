@@ -34,29 +34,18 @@ class PretrainedConfig(object):
     Base class for all configuration classes. Handles a few parameters common to all models' configurations as well as
     methods for loading/downloading/saving configurations.
 
-    Note:
-        A configuration file can be loaded and saved to disk. Loading the configuration file and using this file to
-        initialize a model does **not** load the model weights. It only affects the model's configuration.
+    Note: A configuration file can be loaded and saved to disk. Loading the configuration file and using this file to
+    initialize a model does **not** load the model weights. It only affects the model's configuration.
 
     Class attributes (overridden by derived classes)
 
-        - **model_type** (:obj:`str`) -- An identifier for the model type, serialized into the JSON file, and used to
+        - **model_type** (:obj:`str`): An identifier for the model type, serialized into the JSON file, and used to
           recreate the correct object in :class:`~transformers.AutoConfig`.
-        - **is_composition** (:obj:`bool`) -- Whether the config class is composed of multiple sub-configs. In this
-          case the config has to be initialized from two or more configs of type
-          :class:`~transformers.PretrainedConfig` like: :class:`~transformers.EncoderDecoderConfig` or
-          :class:`~RagConfig`.
-        - **keys_to_ignore_at_inference** (:obj:`List[str]`) -- A list of keys to ignore by default when looking at
+        - **is_composition** (:obj:`bool`): Whether the config class is composed of multiple sub-configs. In this case
+          the config has to be initialized from two or more configs of type :class:`~transformers.PretrainedConfig`
+          like: :class:`~transformers.EncoderDecoderConfig` or :class:`~RagConfig`.
+        - **keys_to_ignore_at_inference** (:obj:`List[str]`): A list of keys to ignore by default when looking at
           dictionary outputs of the model during inference.
-
-    Common attributes (present in all subclasses)
-
-        - **vocab_size** (:obj:`int`) -- The number of tokens in the vocabulary, which is also the first dimension of
-          the embeddings matrix (this attribute may be missing for models that don't have a text modality like ViT).
-        - **hidden_size** (:obj:`int`) -- The hidden size of the model.
-        - **num_attention_heads** (:obj:`int`) -- The number of attention heads used in the multi-head attention layers
-          of the model.
-        - **num_hidden_layers** (:obj:`int`) -- The number of blocks in the model.
 
     Args:
         name_or_path (:obj:`str`, `optional`, defaults to :obj:`""`):
@@ -262,7 +251,7 @@ class PretrainedConfig(object):
 
         # TPU arguments
         if kwargs.pop("xla_device", None) is not None:
-            logger.warning(
+            logger.warn(
                 "The `xla_device` argument has been deprecated in v4.4.0 of Transformers. It is ignored and you can "
                 "safely remove it from your `config.json` file."
             )
@@ -399,11 +388,10 @@ class PretrainedConfig(object):
 
         """
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
-        if "model_type" in config_dict and hasattr(cls, "model_type") and config_dict["model_type"] != cls.model_type:
-            logger.warn(
-                f"You are using a model of type {config_dict['model_type']} to instantiate a model of type "
-                f"{cls.model_type}. This is not supported for all configurations of models and can yield errors."
-            )
+        if config_dict.get("model_type", False) and hasattr(cls, "model_type"):
+            assert (
+                config_dict["model_type"] == cls.model_type
+            ), f"You tried to initiate a model of type '{cls.model_type}' with a pretrained model of type '{config_dict['model_type']}'"
 
         return cls.from_dict(config_dict, **kwargs)
 

@@ -17,7 +17,6 @@
 import unittest
 
 from transformers import BertConfig, is_tf_available
-from transformers.models.auto import get_values
 from transformers.testing_utils import require_tf, slow
 
 from .test_configuration_common import ConfigTester
@@ -283,7 +282,7 @@ class TFBertModelTest(TFModelTesterMixin, unittest.TestCase):
         inputs_dict = super()._prepare_for_class(inputs_dict, model_class, return_labels=return_labels)
 
         if return_labels:
-            if model_class in get_values(TF_MODEL_FOR_PRETRAINING_MAPPING):
+            if model_class in TF_MODEL_FOR_PRETRAINING_MAPPING.values():
                 inputs_dict["next_sentence_label"] = tf.zeros(self.model_tester.batch_size, dtype=tf.int32)
 
         return inputs_dict

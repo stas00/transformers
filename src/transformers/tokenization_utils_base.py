@@ -825,13 +825,7 @@ class SpecialTokensMixin:
         special tokens are NOT in the vocabulary, they are added to it (indexed starting from the last index of the
         current vocabulary).
 
-        .. Note::
-            When adding new tokens to the vocabulary, you should make sure to also resize the token embedding matrix of
-            the model so that its embedding matrix matches the tokenizer.
-
-            In order to do that, please use the :meth:`~transformers.PreTrainedModel.resize_token_embeddings` method.
-
-        Using :obj:`add_special_tokens` will ensure your special tokens can be used in several ways:
+        Using : obj:`add_special_tokens` will ensure your special tokens can be used in several ways:
 
         - Special tokens are carefully handled by the tokenizer (they are never split).
         - You can easily refer to special tokens using tokenizer class attributes like :obj:`tokenizer.cls_token`. This
@@ -1828,7 +1822,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
         added_tokens = tokenizer.sanitize_special_tokens()
         if added_tokens:
             logger.warning(
-                "Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained."
+                "Special tokens have been added in the vocabulary, make sure the associated word embedding are fine-tuned or trained."
             )
 
         return tokenizer
@@ -1936,7 +1930,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
         """
         if not legacy_format:
             raise ValueError(
-                "Only fast tokenizers (instances of PreTrainedTokenizerFast) can be saved in non legacy format."
+                "Only fast tokenizers (instances of PretrainedTokenizerFast) can be saved in non legacy format."
             )
 
         save_directory = str(save_directory)

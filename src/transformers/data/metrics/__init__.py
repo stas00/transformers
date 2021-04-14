@@ -16,7 +16,7 @@
 
 import warnings
 
-from ...file_utils import is_sklearn_available, requires_backends
+from ...file_utils import is_sklearn_available, requires_sklearn
 
 
 if is_sklearn_available():
@@ -34,13 +34,13 @@ DEPRECATION_WARNING = (
 
 def simple_accuracy(preds, labels):
     warnings.warn(DEPRECATION_WARNING, FutureWarning)
-    requires_backends(simple_accuracy, "sklearn")
+    requires_sklearn(simple_accuracy)
     return (preds == labels).mean()
 
 
 def acc_and_f1(preds, labels):
     warnings.warn(DEPRECATION_WARNING, FutureWarning)
-    requires_backends(acc_and_f1, "sklearn")
+    requires_sklearn(acc_and_f1)
     acc = simple_accuracy(preds, labels)
     f1 = f1_score(y_true=labels, y_pred=preds)
     return {
@@ -52,7 +52,7 @@ def acc_and_f1(preds, labels):
 
 def pearson_and_spearman(preds, labels):
     warnings.warn(DEPRECATION_WARNING, FutureWarning)
-    requires_backends(pearson_and_spearman, "sklearn")
+    requires_sklearn(pearson_and_spearman)
     pearson_corr = pearsonr(preds, labels)[0]
     spearman_corr = spearmanr(preds, labels)[0]
     return {
@@ -64,7 +64,7 @@ def pearson_and_spearman(preds, labels):
 
 def glue_compute_metrics(task_name, preds, labels):
     warnings.warn(DEPRECATION_WARNING, FutureWarning)
-    requires_backends(glue_compute_metrics, "sklearn")
+    requires_sklearn(glue_compute_metrics)
     assert len(preds) == len(labels), f"Predictions and labels have mismatched lengths {len(preds)} and {len(labels)}"
     if task_name == "cola":
         return {"mcc": matthews_corrcoef(labels, preds)}
@@ -94,7 +94,7 @@ def glue_compute_metrics(task_name, preds, labels):
 
 def xnli_compute_metrics(task_name, preds, labels):
     warnings.warn(DEPRECATION_WARNING, FutureWarning)
-    requires_backends(xnli_compute_metrics, "sklearn")
+    requires_sklearn(xnli_compute_metrics)
     assert len(preds) == len(labels), f"Predictions and labels have mismatched lengths {len(preds)} and {len(labels)}"
     if task_name == "xnli":
         return {"acc": simple_accuracy(preds, labels)}

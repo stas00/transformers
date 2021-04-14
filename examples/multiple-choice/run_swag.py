@@ -46,7 +46,7 @@ from transformers.utils import check_min_version
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.6.0.dev0")
+check_min_version("4.5.0.dev0")
 
 logger = logging.getLogger(__name__)
 
@@ -268,10 +268,10 @@ def main():
         if data_args.validation_file is not None:
             data_files["validation"] = data_args.validation_file
         extension = data_args.train_file.split(".")[-1]
-        datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
+        datasets = load_dataset(extension, data_files=data_files)
     else:
         # Downloading and loading the swag dataset from the hub.
-        datasets = load_dataset("swag", "regular", cache_dir=model_args.cache_dir)
+        datasets = load_dataset("swag", "regular")
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
@@ -310,14 +310,14 @@ def main():
     if data_args.max_seq_length is None:
         max_seq_length = tokenizer.model_max_length
         if max_seq_length > 1024:
-            logger.warning(
+            logger.warn(
                 f"The tokenizer picked seems to have a very large `model_max_length` ({tokenizer.model_max_length}). "
                 "Picking 1024 instead. You can change that default value by passing --max_seq_length xxx."
             )
             max_seq_length = 1024
     else:
         if data_args.max_seq_length > tokenizer.model_max_length:
-            logger.warning(
+            logger.warn(
                 f"The max_seq_length passed ({data_args.max_seq_length}) is larger than the maximum length for the"
                 f"model ({tokenizer.model_max_length}). Using max_seq_length={tokenizer.model_max_length}."
             )

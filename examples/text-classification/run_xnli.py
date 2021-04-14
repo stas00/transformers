@@ -45,7 +45,7 @@ from transformers.utils import check_min_version
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.6.0.dev0")
+check_min_version("4.5.0.dev0")
 
 logger = logging.getLogger(__name__)
 
@@ -209,19 +209,17 @@ def main():
     # Downloading and loading xnli dataset from the hub.
     if training_args.do_train:
         if model_args.train_language is None:
-            train_dataset = load_dataset("xnli", model_args.language, split="train", cache_dir=model_args.cache_dir)
+            train_dataset = load_dataset("xnli", model_args.language, split="train")
         else:
-            train_dataset = load_dataset(
-                "xnli", model_args.train_language, split="train", cache_dir=model_args.cache_dir
-            )
+            train_dataset = load_dataset("xnli", model_args.train_language, split="train")
         label_list = train_dataset.features["label"].names
 
     if training_args.do_eval:
-        eval_dataset = load_dataset("xnli", model_args.language, split="validation", cache_dir=model_args.cache_dir)
+        eval_dataset = load_dataset("xnli", model_args.language, split="validation")
         label_list = eval_dataset.features["label"].names
 
     if training_args.do_predict:
-        test_dataset = load_dataset("xnli", model_args.language, split="test", cache_dir=model_args.cache_dir)
+        test_dataset = load_dataset("xnli", model_args.language, split="test")
         label_list = test_dataset.features["label"].names
 
     # Labels
@@ -334,15 +332,13 @@ def main():
 
     # Training
     if training_args.do_train:
-        checkpoint = None
         if last_checkpoint is not None:
-            checkpoint = last_checkpoint
+            model_path = last_checkpoint
         elif os.path.isdir(model_args.model_name_or_path):
-            # Check the config from that potential checkpoint has the right number of labels before using it as a
-            # checkpoint.
-            if AutoConfig.from_pretrained(model_args.model_name_or_path).num_labels == num_labels:
-                checkpoint = model_args.model_name_or_path
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+            model_path = model_args.model_name_or_path
+        else:
+            model_path = None
+        train_result = trainer.train(model_path=model_path)
         metrics = train_result.metrics
         max_train_samples = (
             data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)

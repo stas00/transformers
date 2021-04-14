@@ -45,7 +45,7 @@ from transformers.utils import check_min_version
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.6.0.dev0")
+check_min_version("4.5.0.dev0")
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ def main():
     # download the dataset.
     if data_args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
-        datasets = load_dataset(data_args.dataset_name, data_args.dataset_config_name, cache_dir=model_args.cache_dir)
+        datasets = load_dataset(data_args.dataset_name, data_args.dataset_config_name)
     else:
         data_files = {}
         if data_args.train_file is not None:
@@ -239,7 +239,7 @@ def main():
         if data_args.test_file is not None:
             data_files["test"] = data_args.test_file
         extension = data_args.train_file.split(".")[-1]
-        datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
+        datasets = load_dataset(extension, data_files=data_files)
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 

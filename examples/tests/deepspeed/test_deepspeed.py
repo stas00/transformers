@@ -16,16 +16,16 @@ import dataclasses
 import io
 import json
 import os
+import sys
 import unittest
 from copy import deepcopy
 
 from parameterized import parameterized
-from transformers import TrainingArguments, is_torch_available
+from transformers import TrainingArguments
 from transformers.file_utils import WEIGHTS_NAME
 from transformers.integrations import is_deepspeed_available
 from transformers.testing_utils import (
     CaptureLogger,
-    ExtendSysPath,
     TestCasePlus,
     execute_subprocess_async,
     get_gpu_count,
@@ -38,11 +38,8 @@ from transformers.trainer_utils import set_seed
 
 
 bindir = os.path.abspath(os.path.dirname(__file__))
-with ExtendSysPath(f"{bindir}/.."):
-    from test_trainer import TrainerIntegrationCommon  # noqa
-
-    if is_torch_available():
-        from test_trainer import get_regression_trainer  # noqa
+sys.path.append(f"{bindir}/../../../tests")
+from test_trainer import TrainerIntegrationCommon, get_regression_trainer  # noqa
 
 
 set_seed(42)
@@ -114,12 +111,6 @@ class TrainerIntegrationDeepSpeed(TestCasePlus, TrainerIntegrationCommon):
             self.ds_config_dict[ZERO2] = json.load(f)
         with io.open(self.ds_config_file[ZERO3], "r", encoding="utf-8") as f:
             self.ds_config_dict[ZERO3] = json.load(f)
-
-    def tearDown(self):
-        # XXX: Fixme - this is a temporary band-aid since this global variable impacts other tests
-        import transformers
-
-        transformers.integrations._is_deepspeed_zero3_enabled = None
 
     def get_config_dict(self, stage):
         """ As the tests modify the dict, always make a copy """
@@ -595,7 +586,8 @@ class TestDeepSpeedWithLauncher(TestCasePlus):
 
         ds_args = f"--deepspeed {self.test_file_dir_str}/ds_config_{stage}.json".split()
         script = [f"{self.examples_dir_str}/seq2seq/run_translation.py"]
-        launcher = self.get_launcher(distributed)
+        num_gpus = get_gpu_count() if distributed else 1
+        launcher = f"deepspeed --num_gpus {num_gpus}".split()
 
         cmd = launcher + script + args + ds_args
         # keep for quick debug
@@ -628,9 +620,11 @@ class TestDeepSpeedWithLauncher(TestCasePlus):
             --block_size 128
             """.split()
 
+        distributed = True
         ds_args = f"--deepspeed {self.test_file_dir_str}/ds_config_{stage}.json".split()
         script = [f"{self.examples_dir_str}/language-modeling/run_clm.py"]
-        launcher = self.get_launcher(distributed=True)
+        num_gpus = get_gpu_count() if distributed else 1
+        launcher = f"deepspeed --num_gpus {num_gpus}".split()
 
         cmd = launcher + script + args + ds_args
         # keep for quick debug
@@ -638,11 +632,3 @@ class TestDeepSpeedWithLauncher(TestCasePlus):
         execute_subprocess_async(cmd, env=self.get_env())
 
         return output_dir
-
-    def get_launcher(self, distributed=False):
-        # 1. explicitly set --num_nodes=1 just in case these tests end up run on a multi-node setup
-        # - it won't be able to handle that
-        # 2. for now testing with just 2 gpus max (since some quality tests may give different
-        # results with mode gpus because we use very little data)
-        num_gpus = min(2, get_gpu_count()) if distributed else 1
-        return f"deepspeed --num_nodes 1 --num_gpus {num_gpus}".split()

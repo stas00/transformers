@@ -22,10 +22,9 @@ import tempfile
 import unittest
 from typing import List, Tuple
 
-from transformers import is_torch_available, logging
+from transformers import is_torch_available
 from transformers.file_utils import WEIGHTS_NAME
-from transformers.models.auto import get_values
-from transformers.testing_utils import CaptureLogger, require_torch, require_torch_multi_gpu, slow, torch_device
+from transformers.testing_utils import require_torch, require_torch_multi_gpu, slow, torch_device
 
 
 if is_torch_available():
@@ -35,7 +34,6 @@ if is_torch_available():
     from transformers import (
         BERT_PRETRAINED_MODEL_ARCHIVE_LIST,
         MODEL_FOR_CAUSAL_LM_MAPPING,
-        MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING,
         MODEL_FOR_MASKED_LM_MAPPING,
         MODEL_FOR_MULTIPLE_CHOICE_MAPPING,
         MODEL_FOR_NEXT_SENTENCE_PREDICTION_MAPPING,
@@ -80,7 +78,7 @@ class ModelTesterMixin:
 
     def _prepare_for_class(self, inputs_dict, model_class, return_labels=False):
         inputs_dict = copy.deepcopy(inputs_dict)
-        if model_class in get_values(MODEL_FOR_MULTIPLE_CHOICE_MAPPING):
+        if model_class in MODEL_FOR_MULTIPLE_CHOICE_MAPPING.values():
             inputs_dict = {
                 k: v.unsqueeze(1).expand(-1, self.model_tester.num_choices, -1).contiguous()
                 if isinstance(v, torch.Tensor) and v.ndim > 1
@@ -89,9 +87,9 @@ class ModelTesterMixin:
             }
 
         if return_labels:
-            if model_class in get_values(MODEL_FOR_MULTIPLE_CHOICE_MAPPING):
+            if model_class in MODEL_FOR_MULTIPLE_CHOICE_MAPPING.values():
                 inputs_dict["labels"] = torch.ones(self.model_tester.batch_size, dtype=torch.long, device=torch_device)
-            elif model_class in get_values(MODEL_FOR_QUESTION_ANSWERING_MAPPING):
+            elif model_class in MODEL_FOR_QUESTION_ANSWERING_MAPPING.values():
                 inputs_dict["start_positions"] = torch.zeros(
                     self.model_tester.batch_size, dtype=torch.long, device=torch_device
                 )
@@ -99,18 +97,17 @@ class ModelTesterMixin:
                     self.model_tester.batch_size, dtype=torch.long, device=torch_device
                 )
             elif model_class in [
-                *get_values(MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING),
-                *get_values(MODEL_FOR_NEXT_SENTENCE_PREDICTION_MAPPING),
-                *get_values(MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING),
+                *MODEL_FOR_SEQUENCE_CLASSIFICATION_MAPPING.values(),
+                *MODEL_FOR_NEXT_SENTENCE_PREDICTION_MAPPING.values(),
             ]:
                 inputs_dict["labels"] = torch.zeros(
                     self.model_tester.batch_size, dtype=torch.long, device=torch_device
                 )
             elif model_class in [
-                *get_values(MODEL_FOR_TOKEN_CLASSIFICATION_MAPPING),
-                *get_values(MODEL_FOR_CAUSAL_LM_MAPPING),
-                *get_values(MODEL_FOR_MASKED_LM_MAPPING),
-                *get_values(MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING),
+                *MODEL_FOR_TOKEN_CLASSIFICATION_MAPPING.values(),
+                *MODEL_FOR_CAUSAL_LM_MAPPING.values(),
+                *MODEL_FOR_MASKED_LM_MAPPING.values(),
+                *MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING.values(),
             ]:
                 inputs_dict["labels"] = torch.zeros(
                     (self.model_tester.batch_size, self.model_tester.seq_length), dtype=torch.long, device=torch_device
@@ -230,7 +227,7 @@ class ModelTesterMixin:
         config.return_dict = True
 
         for model_class in self.all_model_classes:
-            if model_class in get_values(MODEL_MAPPING):
+            if model_class in MODEL_MAPPING.values():
                 continue
             model = model_class(config)
             model.to(torch_device)
@@ -249,7 +246,7 @@ class ModelTesterMixin:
         config.return_dict = True
 
         for model_class in self.all_model_classes:
-            if model_class in get_values(MODEL_MAPPING):
+            if model_class in MODEL_MAPPING.values():
                 continue
             model = model_class(config)
             model.to(torch_device)
@@ -313,7 +310,7 @@ class ModelTesterMixin:
                 if "labels" in inputs_dict:
                     correct_outlen += 1  # loss is added to beginning
                 # Question Answering model returns start_logits and end_logits
-                if model_class in get_values(MODEL_FOR_QUESTION_ANSWERING_MAPPING):
+                if model_class in MODEL_FOR_QUESTION_ANSWERING_MAPPING.values():
                     correct_outlen += 1  # start_logits and end_logits instead of only 1 output
                 if "past_key_values" in outputs:
                     correct_outlen += 1  # past_key_values have been returned
@@ -1296,7 +1293,6 @@ class ModelUtilsTest(unittest.TestCase):
         model = T5ForConditionalGeneration.from_pretrained(TINY_T5)
         self.assertIsNotNone(model)
 
-        logger = logging.get_logger("transformers.configuration_utils")
-        with CaptureLogger(logger) as cl:
+        with self.assertRaises(Exception) as context:
             BertModel.from_pretrained(TINY_T5)
-        self.assertTrue("You are using a model of type t5 to instantiate a model of type bert" in cl.out)
+        self.assertTrue("You tried to initiate a model of type" in str(context.exception))

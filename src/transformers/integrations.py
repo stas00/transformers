@@ -24,8 +24,8 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path
 
-from .dependency_versions_check import dep_version_check
 from .utils import logging
+from .utils.versions import require_version
 
 
 logger = logging.get_logger(__name__)
@@ -55,7 +55,7 @@ from .trainer_utils import PREFIX_CHECKPOINT_DIR, BestRun, IntervalStrategy  # n
 def is_wandb_available():
     # any value of WANDB_DISABLED disables wandb
     if os.getenv("WANDB_DISABLED", "").upper() in ENV_VARS_TRUE_VALUES:
-        logger.warning(
+        logger.warn(
             "Using the `WAND_DISABLED` environment variable is deprecated and will be removed in v5. Use the "
             "--report_to flag to control the integrations used for logging result (for instance --report_to none)."
         )
@@ -324,7 +324,7 @@ def deepspeed_parse_config(ds_config):
 
     If it's already a dict, return a copy of it, so that we can freely modify it.
     """
-    dep_version_check("deepspeed")
+    require_version("deepspeed>0.3.13")
 
     if isinstance(ds_config, dict):
         # Don't modify user's data should they want to reuse it (e.g. in tests), because once we
@@ -604,11 +604,9 @@ class TensorBoardCallback(TrainerCallback):
                 self.tb_writer.add_hparams(args.to_sanitized_dict(), metric_dict={})
 
     def on_log(self, args, state, control, logs=None, **kwargs):
-        if not state.is_world_process_zero:
-            return
-
-        if self.tb_writer is None:
-            self._init_summary_writer(args)
+        if state.is_world_process_zero:
+            if self.tb_writer is None:
+                self._init_summary_writer(args)
 
         if self.tb_writer is not None:
             logs = rewrite_logs(logs)
