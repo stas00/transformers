@@ -868,6 +868,11 @@ class Trainer:
 
             optimizer_cls = AdamW
             optimizer_kwargs.update(adam_kwargs)
+        elif args.optim == OptimizerNames.ADAMW_TORCH_FUSED:
+            from torch.optim._multi_tensor import AdamW
+
+            optimizer_cls = AdamW
+            optimizer_kwargs.update(adam_kwargs)
         elif args.optim == OptimizerNames.ADAMW_APEX_FUSED:
             try:
                 from apex.optimizers import FusedAdam
